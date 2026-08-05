@@ -62,8 +62,42 @@ Commits: skeleton backend · .gitattributes · smoke tests · dashboard.
 - Dev servers registered in `.claude/launch.json` as `skuforge-backend` (:8000)
   and `skuforge-frontend` (:3005).
 
+## 5 Aug 2026 — Session 4: first live runs + hardening
+
+API key added; `MOCK_MODE` off. Three live runs on the same Square D breaker,
+each one exposing real-world failures the fixtures could never show.
+
+**Run 1 — baseline (116 s, $0.0169, 11 attributes, 5 conflicts).**
+Scout found 5 sources; only 2 were usable. Notably one of them was a spec sheet
+hosted on **assets.unilogcorp.com — Unilog's own CDN** (a nice detail for the
+demo: the system independently found the judges' own content). Problems found:
+
+| Symptom | Diagnosis | Fix |
+|---|---|---|
+| 3 of 5 sources "unusable", no reason given | `se.com` product pages return **403** (bot protection); the CloudFront PDF was a **timeout** on a 536 KB file | `cache.fetch()` now retries once with a doubled timeout, distinguishes 401/403/429 as `blocked` (no retry — the server answered) from transient errors, and records the reason in `_FAILURES`; the pipeline event now reads `Skipped — blocked (403)` instead of a generic message |
+| 5 conflicts from only 2 sources | Values like `AWG 14...AWG 8` vs `AWG 14...AWG 8 aluminium/copper)1; AWG 14...AWG 10 copper)2` are the *same fact at different detail*, not contradictions | added `_subsumes()` — buckets merge when one normalized value contains the other (≥4 chars), keeping the longer as canonical |
+| `image_urls` contained PDF links | the model returned the source document URL as an "image" | `_is_image()` filters to real image extensions |
+| certifications listed `UL listed` **and** `UL Listed` | no normalization | `_dedupe_labels()` collapses case/whitespace duplicates, keeps first spelling |
+| manufacturer HTML blocked while its PDFs are open | HTML product pages are bot-protected; spec-sheet PDFs sit on open CDNs and are attribute-dense | Scout now sorts PDFs first *within* each trust tier and its prompt asks for at least two direct PDF links |
+
+**Run 2 — after fixes (134.6 s, $0.0272).** 3 usable sources (CloudFront PDF now
+succeeds), 13 attributes, conflicts down 5 → 2. Both survivors are *genuine*
+disagreements a human should settle: two different GTINs, and weight 0.65 lb vs
+1 lb (net vs shipping). Certifications deduped; no PDFs in images. Triple-
+corroborated attributes reached 0.92 confidence.
+
+**Parallel extraction.** Sources are independent, so the orchestrator now runs
+extraction across them in a `ThreadPoolExecutor`, then replays results in trust
+order so output stays deterministic. **Run 3: 87.3 s** — a 35% latency cut, and
+the lever that makes catalog-scale batches practical.
+
+### Current live numbers (single SKU, cold cache)
+~87 s, **$0.022–0.027 per SKU (≈₹2)** versus ₹150–250 for manual enrichment;
+12–13 attributes from 3 usable sources, 1–2 genuine conflicts surfaced for
+human review.
+
 ### Still pending
-- Live API-key run (needs `backend/.env` + a spend cap on the key)
-- Category template tuning against real extraction results
+- Category template tuning across more verticals
 - Batch dashboard UI (backend endpoints already exist)
+- Images: PDFs yield no image URLs — needs a distributor-page or image-search path
 - Deploy (Vercel + Railway/Render), demo video, one-pager deck

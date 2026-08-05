@@ -22,8 +22,38 @@ EQUIV_SCHEMA = {
 }
 
 
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".bmp")
+
+
 def _norm(value: str, unit: str) -> str:
     return f"{value.strip().lower()} {unit.strip().lower()}".strip()
+
+
+def _is_image(url: str) -> bool:
+    """Models sometimes hand back the source document URL as an 'image'."""
+    return url.lower().split("?")[0].endswith(IMAGE_EXTS)
+
+
+def _dedupe_labels(labels: list[str]) -> list[str]:
+    """Collapse case/whitespace duplicates ('UL listed' vs 'UL Listed'),
+    keeping the first spelling seen."""
+    seen: dict[str, str] = {}
+    for label in labels:
+        key = " ".join(label.split()).lower()
+        if key and key not in seen:
+            seen[key] = label.strip()
+    return list(seen.values())
+
+
+def _subsumes(a: str, b: str) -> bool:
+    """True when one value is the other plus extra qualifiers — e.g.
+    'AWG 14...AWG 8' vs 'AWG 14...AWG 8 aluminium/copper; AWG 14...AWG 10 copper'.
+    Same fact at different detail levels, not a contradiction."""
+    x, y = a.strip().lower(), b.strip().lower()
+    if not x or not y or x == y:
+        return False
+    short, long = (x, y) if len(x) <= len(y) else (y, x)
+    return len(short) >= 4 and short in long
 
 
 def _group_values(name: str, evidence: list[Evidence], units: list[str],
@@ -32,6 +62,16 @@ def _group_values(name: str, evidence: list[Evidence], units: list[str],
     buckets: dict[str, list[int]] = {}
     for i, ev in enumerate(evidence):
         buckets.setdefault(_norm(ev.raw_value, units[i]), []).append(i)
+
+    # Merge buckets where one value is the other plus qualifiers.
+    keys = list(buckets)
+    for i, ki in enumerate(keys):
+        for kj in keys[i + 1:]:
+            if ki in buckets and kj in buckets and _subsumes(ki, kj):
+                keep, drop = (ki, kj) if len(ki) >= len(kj) else (kj, ki)
+                buckets[keep] = sorted(buckets[keep] + buckets[drop])
+                del buckets[drop]
+
     if len(buckets) == 1 or config.MOCK_MODE:
         return list(buckets.values()), 0.0
 
@@ -80,9 +120,14 @@ def run(
                 raw_value=a["value"], quote=a.get("quote", ""),
             ))
             units.append(a.get("unit", ""))
-        images.extend(u for u in ex.get("image_urls", []) if u not in images)
-        certs.extend(c for c in ex.get("certifications", []) if c not in certs)
-        equivs.extend(m for m in ex.get("equivalent_mpns", []) if m not in equivs)
+        images.extend(
+            u for u in ex.get("image_urls", []) if _is_image(u) and u not in images
+        )
+        certs.extend(ex.get("certifications", []))
+        equivs.extend(ex.get("equivalent_mpns", []))
+
+    certs = _dedupe_labels(certs)
+    equivs = _dedupe_labels(equivs)
 
     total_sources = len(per_source)
     attributes: list[Attribute] = []

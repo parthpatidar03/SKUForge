@@ -38,7 +38,9 @@ def run(sku: SKUInput, fixture_key: str | None = None) -> tuple[list[Source], fl
         f"MPN: {sku.mpn}\nBrand: {sku.brand}\nDescription: {sku.description}\n\n"
         f"Search for: the official {sku.brand} product page, PDF datasheet/spec sheet, "
         f"and listings on distributor sites (Grainger, Zoro, Platt, etc). "
-        f"List every distinct URL you find with its page title.",
+        f"Prioritise direct links to PDF spec sheets and catalog pages — include "
+        f"at least two if they exist. List every distinct URL you find with its "
+        f"page title.",
         fixture_key=fixture_key,
     )
 
@@ -55,5 +57,10 @@ def run(sku: SKUInput, fixture_key: str | None = None) -> tuple[list[Source], fl
     )
 
     sources = [Source(**s) for s in classify.data["sources"]]
-    sources.sort(key=lambda s: -config.SOURCE_TRUST.get(s.source_type.value, 0))
+    # PDFs first within a trust tier: manufacturer HTML product pages are
+    # routinely bot-blocked (se.com returns 403), while their spec-sheet PDFs
+    # sit on open CDNs and carry denser attribute data.
+    sources.sort(
+        key=lambda s: (-config.SOURCE_TRUST.get(s.source_type.value, 0), not s.is_pdf)
+    )
     return sources[: config.MAX_SOURCES_PER_SKU], search.cost_usd + classify.cost_usd

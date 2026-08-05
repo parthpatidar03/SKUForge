@@ -19,6 +19,14 @@ HEADERS = {
 }
 
 
+# url -> human-readable reason the last fetch failed (surfaced in pipeline events)
+_FAILURES: dict[str, str] = {}
+
+
+def last_failure(url: str) -> str:
+    return _FAILURES.get(url, "unreachable")
+
+
 def _key(url: str) -> str:
     return hashlib.sha256(url.encode()).hexdigest()[:24]
 
@@ -38,7 +46,8 @@ def get(url: str) -> Optional[dict]:
 
 
 def fetch(url: str, force: bool = False) -> Optional[dict]:
-    """Fetch through cache. Returns meta dict or None on failure."""
+    """Fetch through cache. Returns meta dict, or None with the reason recorded
+    in last_failure() — distinguishes bot-blocking (403) from transient errors."""
     if not force:
         hit = get(url)
         if hit:
@@ -46,14 +55,27 @@ def fetch(url: str, force: bool = False) -> Optional[dict]:
             return hit
 
     meta_p, body_p = _paths(url)
-    try:
-        with httpx.Client(
-            headers=HEADERS, timeout=config.FETCH_TIMEOUT_S, follow_redirects=True
-        ) as client:
-            r = client.get(url)
-            r.raise_for_status()
-    except Exception:
+    r = None
+    for attempt in range(2):  # datasheet PDFs are large; one retry on timeout
+        try:
+            with httpx.Client(
+                headers=HEADERS,
+                timeout=config.FETCH_TIMEOUT_S * (attempt + 1),
+                follow_redirects=True,
+            ) as client:
+                r = client.get(url)
+                r.raise_for_status()
+            break
+        except httpx.HTTPStatusError as exc:
+            code = exc.response.status_code
+            _FAILURES[url] = "blocked (403)" if code in (401, 403, 429) else f"HTTP {code}"
+            return None  # server answered; retrying won't help
+        except Exception as exc:
+            _FAILURES[url] = f"{type(exc).__name__}"
+            r = None
+    if r is None:
         return None
+    _FAILURES.pop(url, None)
 
     body_p.write_bytes(r.content)
     meta = {

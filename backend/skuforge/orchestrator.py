@@ -1,6 +1,7 @@
 """Per-SKU pipeline state machine. Emits PipelineEvents for the agent theatre."""
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Optional
 
 from . import config, store, taxonomy
@@ -46,19 +47,37 @@ def run_sku(
         ev("classifier", f"Category: {template['label']} ({cat_conf:.0%})",
            category=category)
 
+        # Sources are independent — extract them concurrently. This is the
+        # single biggest lever on per-SKU latency (each source is a network
+        # fetch plus a model call), and it is what makes catalog-scale runs
+        # practical.
+        ev("extractor", f"Extracting from {len(sources)} sources in parallel")
+        results: dict[str, tuple] = {}
+        with ThreadPoolExecutor(max_workers=len(sources) or 1) as pool:
+            futures = {
+                pool.submit(extractor.run, src, sku.mpn, category, fk): src
+                for src in sources
+            }
+            for future in as_completed(futures):
+                src = futures[future]
+                try:
+                    results[src.url] = future.result()
+                except Exception as exc:
+                    results[src.url] = (None, 0.0, f"error: {type(exc).__name__}")
+                    ev("extractor", f"Error on {src.url[:60]}: {exc}", url=src.url)
+
         per_source = []
-        for src in sources:
-            ev("extractor", f"Extracting from {src.url[:80]}", url=src.url)
-            extraction, c3 = extractor.run(src, sku.mpn, category, fixture_key=fk)
+        for src in sources:  # replay in trust order for deterministic output
+            extraction, c3, skip_reason = results.get(src.url, (None, 0.0, "not run"))
             record.cost_usd += c3
             if extraction:
                 per_source.append((src.url, src.source_type, extraction))
                 ev("extractor",
-                   f"Got {len(extraction.get('attributes', []))} attributes",
+                   f"{len(extraction.get('attributes', []))} attributes from "
+                   f"{src.source_type.value} source",
                    url=src.url)
             else:
-                ev("extractor", "Source unusable (blocked/empty), skipping",
-                   url=src.url)
+                ev("extractor", f"Skipped — {skip_reason}", url=src.url)
             if src.is_pdf and src.url not in record.datasheet_urls:
                 record.datasheet_urls.append(src.url)
 

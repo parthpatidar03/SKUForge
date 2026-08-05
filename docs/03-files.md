@@ -40,9 +40,12 @@ mode. `PRICES` table + `_cost()` compute per-call USD from token usage.
 
 ### `cache.py`
 Disk evidence cache. `fetch()` = cache-or-download (httpx, browser UA,
-redirects) writing `<sha256>.meta.json` + `<sha256>.body`; `get()` for
-cache-only lookups; `read_text()` strips scripts/nav via BeautifulSoup and caps
-at 40k chars. PDFs bypass text extraction — they go to the model as files.
+redirects) writing `<sha256>.meta.json` + `<sha256>.body`, with one retry at
+doubled timeout for large datasheet PDFs; 401/403/429 are recorded as
+`blocked` and never retried. `last_failure(url)` exposes the reason so the
+pipeline can report *why* a source was skipped. `get()` for cache-only lookups;
+`read_text()` strips scripts/nav via BeautifulSoup and caps at 40k chars.
+PDFs bypass text extraction — they go to the model as files.
 
 ### `taxonomy.py`
 12 category templates (circuit_breaker, contactor, switch, receptacle,
@@ -56,10 +59,12 @@ SQLite persistence: `records(id, status, created_at, doc)` with the record
 serialized as JSON. `save()` / `get()` / `list_all()`.
 
 ### `orchestrator.py`
-The state machine: runs Scout → Classifier → Extractor(×sources) → Validator →
-Composer, accumulating cost, emitting a `PipelineEvent` at every step, deciding
-final status (auto-approved vs needs-review), always persisting the record in
-`finally`. `_fixture_key()` maps an MPN to its fixture folder in mock mode.
+The state machine: runs Scout → Classifier → Extractor (all sources in parallel
+via `ThreadPoolExecutor`, results replayed in trust order for determinism) →
+Validator → Composer, accumulating cost, emitting a `PipelineEvent` at every
+step, deciding final status (auto-approved vs needs-review), always persisting
+the record in `finally`. `_fixture_key()` maps an MPN to its fixture folder in
+mock mode.
 
 ### `cli.py`
 `python -m skuforge.cli MPN BRAND [DESC]` — terminal run printing the live agent
@@ -75,8 +80,11 @@ by the SSE endpoint. Endpoints: enrich, events, records list/detail, review
 
 ### `scout.py`
 Two-stage source discovery: web_search prompt naming manufacturer page,
-datasheet PDF, and distributor listings → then a nano-model pass classifying
-URLs into trust tiers and PDF flags. Returns top-N sources sorted by trust.
+datasheet PDF, and distributor listings (explicitly asking for at least two
+direct PDF links) → then a nano-model pass classifying URLs into trust tiers and
+PDF flags. Returns top-N sources sorted by trust, **PDFs first within each
+tier** — manufacturer HTML pages are routinely bot-blocked while their
+spec-sheet PDFs sit on open CDNs.
 
 ### `classifier.py`
 One structured call: MPN + brand + description → category enum + confidence +
@@ -86,15 +94,19 @@ templates can never drift apart.
 ### `extractor.py`
 Per-source extraction. Builds the strict schema dynamically from the category
 template (attribute `name` is an enum of allowed names). HTML path feeds cached
-text; PDF path attaches base64 `input_file`. Returns None for blocked/empty
-sources so the pipeline degrades instead of failing.
+text; PDF path attaches base64 `input_file`. Returns
+`(extraction | None, cost, skip_reason)` — a named reason for blocked/empty
+sources so the pipeline degrades visibly instead of failing silently.
 
 ### `validator.py`
-Trust Engine. `_norm()` normalization + bucketing; `_group_values()` fast exact
-path, LLM equivalence grouping only on textual mismatch; `_confidence()`
+Trust Engine. `_norm()` normalization + bucketing; `_subsumes()` merges buckets
+where one value is the other plus qualifiers; `_group_values()` fast exact path,
+LLM equivalence grouping only on remaining textual mismatch; `_confidence()`
 weighted blend (source trust / corroboration / coverage); winner selection with
-trust-based tie-break; status assignment and conflict capping. Also merges
-image URLs, certifications, equivalent MPNs across sources.
+trust-based tie-break; status assignment and conflict capping. Merges image URLs
+(filtered by `_is_image()` — models return source PDFs as images),
+certifications and equivalent MPNs (`_dedupe_labels()` collapses
+`UL listed`/`UL Listed`).
 
 ### `composer.py`
 Commerce copy from verified facts only (confidence ≥ 0.5, non-conflict).

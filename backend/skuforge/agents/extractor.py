@@ -42,19 +42,19 @@ def _schema(attribute_names: list[str]) -> dict:
 
 def run(
     source: Source, mpn: str, category: str, fixture_key: str | None = None
-) -> tuple[dict | None, float]:
-    """Returns (extraction dict or None if source unusable, cost_usd)."""
+) -> tuple[dict | None, float, str]:
+    """Returns (extraction dict or None if source unusable, cost_usd, skip_reason)."""
     template = taxonomy.get_template(category)
     attr_names = template["attributes"] + taxonomy.UNIVERSAL_ATTRIBUTES
 
     if config.MOCK_MODE:
         result = llm.call_structured("extractor", "", {}, fixture_key=fixture_key)
         per_url = result.data  # fixture: {url: extraction, "default": extraction}
-        return per_url.get(source.url, per_url.get("default")), 0.0
+        return per_url.get(source.url, per_url.get("default")), 0.0, ""
 
     meta = cache.fetch(source.url)
     if meta is None:
-        return None, 0.0
+        return None, 0.0, cache.last_failure(source.url)
     source.fetched_at = meta["fetched_at"]
 
     prompt = (
@@ -78,12 +78,12 @@ def run(
         }]
     else:
         text = cache.read_text(meta)
-        if len(text) < 200:  # blocked page / empty shell
-            return None, 0.0
+        if len(text) < 200:  # JS-only shell or interstitial
+            return None, 0.0, "no readable text"
         prompt += f"\n\nSOURCE CONTENT:\n{text}"
 
     result = llm.call_structured(
         "extractor", prompt, _schema(attr_names), "extraction",
         fixture_key=fixture_key, input_files=input_files,
     )
-    return result.data, result.cost_usd
+    return result.data, result.cost_usd, ""

@@ -23,8 +23,12 @@ Orchestrator (skuforge/orchestrator.py — sync state machine run in a thread,
    │     • output: {category, confidence, reasoning}
    │     • category selects an attribute template (taxonomy.py)
    │
-   ├─ 3. EXTRACTOR (agents/extractor.py) — once per source
-   │     • cache.fetch(url): httpx GET → disk cache (sha256(url) key)
+   ├─ 3. EXTRACTOR (agents/extractor.py) — all sources in parallel
+   │       (ThreadPoolExecutor; results replayed in trust order so the merged
+   │        record is deterministic regardless of completion order)
+   │     • cache.fetch(url): httpx GET → disk cache (sha256(url) key), one
+   │       retry with doubled timeout; 401/403/429 recorded as "blocked" and
+   │       not retried (the server answered — retrying won't help)
    │     • HTML: BeautifulSoup strips script/style/nav → text (40k char cap)
    │     • PDF: raw bytes → base64 data: URI → {"type":"input_file"} content
    │       part (native multimodal PDF parsing = the VLM capability)
@@ -38,12 +42,19 @@ Orchestrator (skuforge/orchestrator.py — sync state machine run in a thread,
    ├─ 4. VALIDATOR (agents/validator.py) — the Trust Engine, mostly deterministic
    │     • group evidence per attribute name across sources
    │     • fast path: exact match after normalization (lowercase value+unit)
+   │     • subsumption merge: when one normalized value contains another
+   │       (≥4 chars), they are the same fact at different detail levels
+   │       ("AWG 14...AWG 8" vs "AWG 14...AWG 8 aluminium/copper; ...AWG 10
+   │       copper") — merged, longer kept as canonical, NOT a conflict
    │     • slow path: gpt-5.6 (medium effort) judges equivalence groups —
    │       handles "0.5 in" vs "1/2\"" vs "12.7mm" (LLM used ONLY for
    │       equivalence judgment, never to invent values)
    │     • winner = largest agreement group; tie → highest source trust
    │     • status: verified (≥2 agreeing) / single-source / conflict
    │       (disagreement → losing values kept visible in conflicting_values)
+   │     • cross-source lists: image URLs filtered to real image extensions
+   │       (models hand back source PDFs as "images"); certifications and
+   │       equivalent MPNs deduped case/whitespace-insensitively
    │     • confidence = 0.5·best_source_trust + 0.35·corroboration + 0.15·coverage
    │       - source trust: manufacturer 1.0, distributor 0.75, marketplace 0.5
    │       - corroboration: min(agreeing_sources/2, 1)
@@ -98,6 +109,24 @@ onto the record (`cost_usd`) → powers the cost-per-SKU stat.
 7. **Threaded sync pipeline under async API.** Pipeline code stays simple
    synchronous Python; FastAPI wraps it with `asyncio.to_thread`, events cross
    the boundary via `loop.call_soon_threadsafe` onto an `asyncio.Queue`.
+8. **Parallel extraction, deterministic merge.** Per-source extraction is
+   fanned out across a thread pool (35% latency cut measured live: 134 s →
+   87 s), but results are merged in trust order, so the same inputs always
+   produce the same record regardless of which source returns first.
+9. **Failure reasons are first-class.** A skipped source reports *why*
+   (`blocked (403)`, `no readable text`, `ReadTimeout`). Manufacturer HTML
+   pages are frequently bot-protected, so the system is designed to lean on
+   their spec-sheet PDFs — Scout ranks PDFs first within each trust tier.
+
+## Measured live performance (single SKU, cold cache)
+
+| Metric | Value |
+|---|---|
+| Wall time | ~87 s |
+| Cost | $0.022–0.027 (≈ ₹2) vs ₹150–250 manual |
+| Sources found / usable | 5 / 3 (manufacturer HTML 403s; PDFs succeed) |
+| Attributes produced | 12–13 |
+| Genuine conflicts surfaced | 1–2 |
 
 ## API surface (skuforge/api.py)
 
