@@ -1,0 +1,8 @@
+{
+  "sources": [
+    {"url": "https://www.se.com/us/en/product/HOM230CP/", "title": "Square D Homeline HOM230CP 30A 2-Pole Circuit Breaker", "source_type": "manufacturer", "is_pdf": false},
+    {"url": "https://www.se.com/us/en/product/download-pdf/HOM230CP", "title": "HOM230CP Product Datasheet (PDF)", "source_type": "manufacturer", "is_pdf": true},
+    {"url": "https://www.grainger.com/product/SQUARE-D-Miniature-Circuit-Breaker-1D237", "title": "SQUARE D Miniature Circuit Breaker, 30 A - Grainger", "source_type": "distributor", "is_pdf": false},
+    {"url": "https://www.zoro.com/square-d-circuit-breaker-hom230cp", "title": "Square D HOM230CP Circuit Breaker - Zoro", "source_type": "distributor", "is_pdf": false}
+  ]
+}

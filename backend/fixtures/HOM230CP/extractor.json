@@ -1,0 +1,61 @@
+{
+  "https://www.se.com/us/en/product/HOM230CP/": {
+    "attributes": [
+      {"name": "amperage_rating", "value": "30", "unit": "A", "quote": "Rated Current: 30 A"},
+      {"name": "voltage_rating", "value": "120/240", "unit": "VAC", "quote": "Rated Voltage: 120/240 VAC"},
+      {"name": "number_of_poles", "value": "2", "unit": "", "quote": "Number of Poles: 2P"},
+      {"name": "interrupt_rating_ka", "value": "10", "unit": "kA", "quote": "Short-circuit breaking capacity: 10 kA at 120/240 VAC"},
+      {"name": "breaker_type", "value": "Miniature", "unit": "", "quote": "Product or component type: Miniature circuit breaker"},
+      {"name": "mounting_type", "value": "Plug-on", "unit": "", "quote": "Mounting mode: Plug-on"},
+      {"name": "trip_type", "value": "Thermal-magnetic", "unit": "", "quote": "Trip unit technology: Thermal-magnetic"},
+      {"name": "weight_lbs", "value": "0.75", "unit": "lbs", "quote": "Net weight: 0.75 lb (0.34 kg)"}
+    ],
+    "image_urls": ["https://download.schneider-electric.com/files?p_Doc_Ref=HOM230CP_image"],
+    "certifications": ["UL Listed", "CSA"],
+    "equivalent_mpns": []
+  },
+  "https://www.se.com/us/en/product/download-pdf/HOM230CP": {
+    "attributes": [
+      {"name": "amperage_rating", "value": "30", "unit": "A", "quote": "In: 30 A"},
+      {"name": "voltage_rating", "value": "120/240", "unit": "VAC", "quote": "Ue: 120/240 VAC"},
+      {"name": "number_of_poles", "value": "2", "unit": "", "quote": "2P"},
+      {"name": "interrupt_rating_ka", "value": "10", "unit": "kA", "quote": "Icn = 10 kA"},
+      {"name": "wire_size_range", "value": "8-14", "unit": "AWG", "quote": "Terminal capacity: 14-8 AWG (Al/Cu)"},
+      {"name": "frame_type", "value": "HOM", "unit": "", "quote": "Frame: HOM"},
+      {"name": "width_inches", "value": "2", "unit": "in", "quote": "Width: 2 in"}
+    ],
+    "image_urls": [],
+    "certifications": ["UL 489"],
+    "equivalent_mpns": []
+  },
+  "https://www.grainger.com/product/SQUARE-D-Miniature-Circuit-Breaker-1D237": {
+    "attributes": [
+      {"name": "amperage_rating", "value": "30", "unit": "A", "quote": "Amps: 30 A"},
+      {"name": "voltage_rating", "value": "120/240", "unit": "VAC", "quote": "Voltage: 120/240V AC"},
+      {"name": "number_of_poles", "value": "2", "unit": "", "quote": "Number of Poles: 2"},
+      {"name": "interrupt_rating_ka", "value": "10", "unit": "kA", "quote": "Interrupting Capacity: 10 kA"},
+      {"name": "mounting_type", "value": "Plug-on", "unit": "", "quote": "Mounting: Plug In"},
+      {"name": "weight_lbs", "value": "1.1", "unit": "lbs", "quote": "Item Weight: 1.1 lb"}
+    ],
+    "image_urls": ["https://static.grainger.com/rp/s/is/image/Grainger/1D237_AS01"],
+    "certifications": ["UL Listed"],
+    "equivalent_mpns": ["EATON BR230", "GE THQL2130"]
+  },
+  "https://www.zoro.com/square-d-circuit-breaker-hom230cp": {
+    "attributes": [
+      {"name": "amperage_rating", "value": "30", "unit": "A", "quote": "Amperage: 30"},
+      {"name": "number_of_poles", "value": "2", "unit": "", "quote": "Poles: 2"},
+      {"name": "breaker_type", "value": "Miniature", "unit": "", "quote": "Type: Miniature Circuit Breaker"},
+      {"name": "weight_lbs", "value": "1.1", "unit": "lbs", "quote": "Shipping Weight: 1.1 lbs"}
+    ],
+    "image_urls": [],
+    "certifications": [],
+    "equivalent_mpns": []
+  },
+  "default": {
+    "attributes": [],
+    "image_urls": [],
+    "certifications": [],
+    "equivalent_mpns": []
+  }
+}
