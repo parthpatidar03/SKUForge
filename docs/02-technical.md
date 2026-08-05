@@ -159,14 +159,26 @@ Manual enrichment of the same record costs a content team ₹150–250. Sources 
 lost to bot-blocking (403), 404s, and connect timeouts — the pipeline treats
 partial source coverage as normal and reports which sources failed and why.
 
-## Rate limits and retries
+## Rate limits, quotas, and retries
 
-`llm._with_retry()` wraps every model call: exponential backoff with jitter on
-429/`RESOURCE_EXHAUSTED`, up to `LLM_MAX_RETRIES`. Quota *exhaustion*
-(`insufficient_quota`) is deliberately **not** retried — waiting cannot refill a
-spent balance, so it fails fast. Extraction fan-out is capped per provider
-(`MAX_PARALLEL_EXTRACTIONS`) so a free tier's per-minute limit isn't tripped by
-our own parallelism.
+Two very different conditions both arrive as HTTP 429, and conflating them
+wastes minutes and hides causes:
+
+| | Per-minute rate limit | Daily / plan exhaustion |
+|---|---|---|
+| Signature | `429`, `RESOURCE_EXHAUSTED` | `PerDay`, `insufficient_quota`, `credit_balance` |
+| Handling | retry with exponential backoff + jitter, honouring the provider's `retry in Ns` hint when ≤ 90 s | raise `QuotaExhausted` immediately |
+| Reason | clears by itself in seconds | nothing this run does will fix it |
+
+Concurrency is bounded on two axes so we never rate-limit ourselves:
+`MAX_PARALLEL_EXTRACTIONS` (sources per SKU) and `BATCH_CONCURRENCY` (SKUs at
+once), both lower on Gemini than OpenAI.
+
+**Free-tier ceiling, measured:** Gemini allows **20 `generate_content` requests
+per day per model** on the free tier (`GenerateRequestsPerDayPerProject
+PerModel-FreeTier`). At roughly eight calls per SKU that is ~2 SKUs/day — fine
+for live single-SKU demos, insufficient for a batch in one sitting. A 10-SKU
+batch on OpenAI costs about $0.25.
 
 **Model availability must be probed, not assumed.** On a free Gemini key,
 `gemini-2.5-flash-lite` 404s as retired for new users and `gemini-2.0-flash`,

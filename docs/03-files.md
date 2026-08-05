@@ -79,6 +79,21 @@ mock mode.
 `python -m skuforge.cli MPN BRAND [DESC]` — terminal run printing the live agent
 log then the full record JSON. Fastest way to test the pipeline without the UI.
 
+### `batch.py`
+`python -m skuforge.batch <csv> [limit]` — the catalog-scale path. Runs a CSV of
+bare SKUs through the pipeline with `BATCH_CONCURRENCY` workers and prints a
+summary: SKUs completed, wall time and time per SKU, total and per-SKU cost,
+attributes generated, auto-approval rate, and the share of fields needing human
+review. Abandons remaining SKUs on `QuotaExhausted` rather than repeating the
+same failure.
+
+### `prune.py`
+`python -m skuforge.prune [--apply]` — demo hygiene. Development leaves the
+store full of repeated runs of one SKU and failed attempts, which distorts the
+catalog view and every aggregate. Keeps the best record per MPN (most
+attributes, newest as tiebreak), drops the rest. Dry-run by default; `--apply`
+copies the database to `skuforge.db.bak` first, so it is always reversible.
+
 ### `api.py`
 FastAPI app + CORS. Runs the sync pipeline via `asyncio.to_thread`, bridging
 events into a per-record `asyncio.Queue` (`loop.call_soon_threadsafe`) consumed

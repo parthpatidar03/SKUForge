@@ -217,6 +217,65 @@ The category-aware schema also proved itself: this record carries `colour`,
 `wiring_type` and `number_of_gangs` — switch attributes that do not exist on the
 breaker template.
 
+## 5 Aug 2026 — Session 8: batch runner, and the free tier's real ceiling
+
+Built the catalog-scale path: `python -m skuforge.batch <csv> [limit]` runs a
+CSV of bare SKUs with bounded concurrency and prints a throughput / cost /
+quality summary, plus a **catalog table** in the dashboard listing every
+enriched SKU with its attribute and conflict counts, clickable through to the
+evidence view.
+
+### The finding that reshapes the demo plan
+
+The 10-SKU batch died almost immediately. The cause is a hard limit, not a bug:
+
+> `GenerateRequestsPerDayPerProjectPerModel-FreeTier` — **limit: 20**,
+> model: gemini-2.5-flash
+
+**Twenty requests per day.** One SKU costs roughly eight model calls, so the
+Gemini free tier supports about **two SKUs per day**. That is plenty for live
+single-SKU demonstrations and completely insufficient for a 10-SKU batch in one
+sitting.
+
+Handling it properly meant separating two things that both arrive as HTTP 429:
+
+| | Per-minute rate limit | Daily / plan exhaustion |
+|---|---|---|
+| Detection | `429` / `RESOURCE_EXHAUSTED` | `PerDay`, `insufficient_quota`, `credit_balance` |
+| Response | retry with backoff, honouring the provider's own `retry in Ns` hint | raise `QuotaExhausted` **immediately** |
+| Why | it clears on its own in seconds | no amount of waiting inside this run fixes it |
+
+Previously a daily-quota failure ground through four backoffs (~60 s) before
+failing, per SKU, hiding the real cause. The batch runner now abandons the
+remaining SKUs the moment `QuotaExhausted` appears rather than proving the same
+point ten times.
+
+Also added `BATCH_CONCURRENCY` (2 on Gemini, 4 on OpenAI) as a semaphore in the
+API, so uploading a catalog cannot rate-limit us through our own parallelism.
+
+### Two smaller fixes
+
+- **Stats counted failed runs in the quality averages**, dragging down
+  auto-approval rate and cost-per-SKU. Failed records are now excluded from the
+  rates and reported as their own `failed` count.
+- **The database had accumulated 61 records** — the same test SKU enriched over
+  and over, plus every failed experiment — which made the catalog view and the
+  aggregate numbers meaningless. Added `python -m skuforge.prune`: dry-run by
+  default, keeps the best record per MPN (richest attribute set, newest as
+  tiebreak), and copies the database to `skuforge.db.bak` before changing
+  anything. Pruned to the 2 genuinely-enriched records, and removed one mock
+  artifact that had leaked in from a browser test.
+
+### Options for the batch demo (decision needed)
+
+1. **Spread it across days on the free tier** — 2 SKUs/day, ~5 days for the
+   full 10-SKU catalog. Free, entirely real, and there are 18 days before the
+   deadline. Records accumulate in the database, so the catalog view fills up.
+2. **Run it once on OpenAI** — 10 SKUs × ~$0.025 ≈ **$0.25** for the whole
+   batch. One command, real data, immediate.
+3. Record the batch from fixtures — free and instant, but it is not a live run
+   and would have to be labelled as such.
+
 ### Still pending
 - Category template tuning across more verticals
 - Batch dashboard UI (backend endpoints already exist)
