@@ -266,18 +266,45 @@ API, so uploading a catalog cannot rate-limit us through our own parallelism.
   anything. Pruned to the 2 genuinely-enriched records, and removed one mock
   artifact that had leaked in from a browser test.
 
-### Options for the batch demo (decision needed)
+### Decision: build the catalog over several days on the free tier
 
-1. **Spread it across days on the free tier** — 2 SKUs/day, ~5 days for the
-   full 10-SKU catalog. Free, entirely real, and there are 18 days before the
-   deadline. Records accumulate in the database, so the catalog view fills up.
-2. **Run it once on OpenAI** — 10 SKUs × ~$0.025 ≈ **$0.25** for the whole
-   batch. One command, real data, immediate.
-3. Record the batch from fixtures — free and instant, but it is not a live run
-   and would have to be labelled as such.
+Chosen over paying ~$0.25 for a single OpenAI run. Two SKUs land per day and
+the deadline is 18 days out, so the catalog fills up for free with entirely
+real data. Procedure and progress table: `05-daily-batch.md`.
+
+Making that work required one more fix — see below.
+
+## 5 Aug 2026 — Session 9: resumable batches, and a bug my own fix caused
+
+Building the catalog daily needs runs to be **resumable**, so the batch now
+skips SKUs that already have a usable record (`--force` overrides). One command,
+run each day, continues where the last stopped; cached evidence means nothing is
+re-downloaded either.
+
+The first resumable run exposed a bug introduced by the *graceful degradation*
+work in session 5. That change wrapped the pipeline so a late failure saved
+partial results instead of raising — but it caught `QuotaExhausted` too. The
+batch runner could therefore never distinguish "this SKU failed" from "the
+budget is gone", and dutifully ground through all nine remaining SKUs, failing
+each one identically.
+
+The fix keeps both behaviours instead of trading one for the other: the
+orchestrator persists whatever was validated **and then re-raises**
+`QuotaExhausted`, from the composer handler as well as the outer one. Partial
+work survives; the caller still learns to stop. Verified live — the batch now
+prints `QUOTA EXHAUSTED — abandoning remaining SKUs` on the first occurrence
+instead of repeating it nine times.
+
+Worth recording as a lesson: *"never lose work on failure"* and *"stop early on
+unrecoverable failure"* look like opposites and are not. Catching broadly to
+satisfy the first quietly broke the second.
+
+`tests/test_quota.py` now pins all three behaviours: daily quota fails fast
+without retrying, per-minute limits still retry, and exhaustion propagates while
+validated attributes are still persisted. **Suite: 9 passing.**
 
 ### Still pending
+- Build out the 10-SKU catalog: one batch command per day (`05-daily-batch.md`)
 - Category template tuning across more verticals
-- Batch dashboard UI (backend endpoints already exist)
 - Images: PDFs yield no image URLs — needs a distributor-page or image-search path
 - Deploy (Vercel + Railway/Render), demo video, one-pager deck
