@@ -6,6 +6,7 @@ from typing import Callable, Optional
 
 from . import config, store, taxonomy
 from .agents import classifier, composer, extractor, scout, validator
+from .llm import QuotaExhausted
 from .models import (
     AttributeStatus, PipelineEvent, ProductRecord, RecordStatus, SKUInput,
 )
@@ -109,6 +110,8 @@ def run_sku(
             record.long_description = copy["long_description"]
             record.search_synonyms = copy["search_synonyms"]
             record.cost_usd += c5
+        except QuotaExhausted:
+            raise  # budget is gone; the caller needs to stop, not just this SKU
         except Exception as exc:
             copy_failed = True
             ev("composer", f"Copy generation failed, keeping attributes: {exc}")
@@ -122,6 +125,17 @@ def run_sku(
         record.status = (
             RecordStatus.needs_review if needs_review else RecordStatus.auto_approved
         )
+    except QuotaExhausted:
+        # Save whatever was validated, then let this one through: the caller
+        # (batch runner, API) must know the budget is gone so it can stop,
+        # rather than watching every remaining SKU fail the same way.
+        record.status = (
+            RecordStatus.needs_review if record.attributes else RecordStatus.failed
+        )
+        ev("orchestrator", "Provider quota exhausted — stopping")
+        record.duration_s = round(time.monotonic() - started, 1)
+        store.save(record)
+        raise
     except Exception as exc:
         # Keep whatever was validated — a partial record with sourced
         # attributes is far more useful than losing the run entirely.

@@ -1,7 +1,11 @@
-"""Catalog runner: python -m skuforge.batch sample_batch.csv [limit]
+"""Catalog runner: python -m skuforge.batch <csv> [limit] [--force]
 
 Processes a CSV of bare SKUs through the pipeline with bounded concurrency and
 prints a throughput/cost/quality summary — the scalability story in one command.
+
+Runs are **resumable**: SKUs already enriched are skipped, so on a metered free
+tier the same command can be run each day and will pick up where the last one
+stopped. `--force` re-enriches everything.
 """
 import csv
 import sys
@@ -9,10 +13,19 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from . import config
+from . import config, store
 from .llm import QuotaExhausted
 from .models import AttributeStatus, RecordStatus, SKUInput
 from .orchestrator import run_sku
+
+
+def already_enriched() -> set[str]:
+    """brand|mpn keys that already have a usable record."""
+    return {
+        f"{r.input.brand.lower()}|{r.input.mpn.lower()}"
+        for r in store.list_all()
+        if r.status != RecordStatus.failed and r.attributes
+    }
 
 
 def load(path: Path, limit: int | None) -> list[SKUInput]:
@@ -33,15 +46,31 @@ def main() -> None:
     if len(sys.argv) < 2:
         print("usage: python -m skuforge.batch <csv> [limit]")
         sys.exit(1)
-    path = Path(sys.argv[1])
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    force = "--force" in sys.argv
+    path = Path(args[0])
     if not path.is_absolute():
         path = Path(__file__).resolve().parent.parent / path
-    limit = int(sys.argv[2]) if len(sys.argv) > 2 else None
+    limit = int(args[1]) if len(args) > 1 else None
 
-    skus = load(path, limit)
+    catalog = load(path, limit)
+    if force:
+        skus, skipped = catalog, 0
+    else:
+        done_keys = already_enriched()
+        skus = [
+            s for s in catalog
+            if f"{s.brand.lower()}|{s.mpn.lower()}" not in done_keys
+        ]
+        skipped = len(catalog) - len(skus)
+
     mode = "MOCK" if config.MOCK_MODE else f"LIVE via {config.PROVIDER}"
-    print(f"[{mode}] batch of {len(skus)} SKUs, "
+    print(f"[{mode}] catalog of {len(catalog)} SKUs — "
+          f"{skipped} already enriched, {len(skus)} to go, "
           f"{config.BATCH_CONCURRENCY} at a time\n")
+    if not skus:
+        print("Catalog complete. Nothing to do.")
+        return
 
     started = time.monotonic()
     records = []
@@ -93,6 +122,11 @@ def main() -> None:
           f"({100*flagged/max(attrs,1):.0f}%)")
     print(f"  Human effort saved    {100*(1-flagged/max(attrs,1)):.0f}% of fields "
           f"need no human touch")
+
+    remaining = len(skus) - len(done)
+    if quota_hit and remaining > 0:
+        print(f"\n  {remaining} SKU(s) left. Quota resets daily — re-run the same "
+              f"command tomorrow and it will resume from here.")
 
 
 if __name__ == "__main__":
