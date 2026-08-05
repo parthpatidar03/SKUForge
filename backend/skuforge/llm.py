@@ -12,6 +12,8 @@ Note the two shapes are kept separate deliberately — Gemini cannot combine a
 response schema with the google_search tool, and the pipeline never needs to.
 """
 import json
+import random
+import time
 from typing import Any, Optional
 
 from . import config
@@ -24,12 +26,39 @@ PRICES = {
     "gpt-5-nano": (0.05, 0.4),
     "gemini-2.5-flash": (0.0, 0.0),
     "gemini-2.5-flash-lite": (0.0, 0.0),
+    "gemini-3.6-flash": (0.0, 0.0),
+    "gemini-3.5-flash-lite": (0.0, 0.0),
 }
 
 # Gemini thinking budgets (tokens) per effort level.
 THINKING_BUDGET = {"minimal": 0, "low": 512, "medium": 2048, "high": 8192}
 
 _clients: dict[str, Any] = {}
+
+
+def _is_rate_limit(exc: Exception) -> bool:
+    text = str(exc)
+    return "429" in text or "RESOURCE_EXHAUSTED" in text or "rate_limit" in text
+
+
+def _with_retry(fn):
+    """Rate limits are the normal state of a free tier, not an error. Retry
+    them with exponential backoff and jitter; surface everything else at once.
+    Quota exhaustion (no credits / daily cap) is not retried — waiting cannot
+    fix it."""
+    last: Exception | None = None
+    for attempt in range(config.LLM_MAX_RETRIES):
+        try:
+            return fn()
+        except Exception as exc:
+            if not _is_rate_limit(exc) or "insufficient_quota" in str(exc):
+                raise
+            last = exc
+            if attempt == config.LLM_MAX_RETRIES - 1:
+                break
+            delay = config.LLM_BACKOFF_BASE_S * (2**attempt) + random.uniform(0, 2)
+            time.sleep(delay)
+    raise last  # type: ignore[misc]
 
 
 class LLMResult:
@@ -230,8 +259,10 @@ def call_structured(
         return LLMResult(_mock_fixture(stage, fixture_key))
     route = config.MODELS[stage]
     if config.PROVIDER == "gemini":
-        return _gemini_structured(route, prompt, schema, input_files)
-    return _openai_structured(route, prompt, schema, schema_name, input_files)
+        return _with_retry(lambda: _gemini_structured(route, prompt, schema, input_files))
+    return _with_retry(
+        lambda: _openai_structured(route, prompt, schema, schema_name, input_files)
+    )
 
 
 def call_web_search(
@@ -244,5 +275,5 @@ def call_web_search(
         return LLMResult(_mock_fixture(stage, fixture_key))
     route = config.MODELS[stage]
     if config.PROVIDER == "gemini":
-        return _gemini_web_search(route, prompt)
-    return _openai_web_search(route, prompt)
+        return _with_retry(lambda: _gemini_web_search(route, prompt))
+    return _with_retry(lambda: _openai_web_search(route, prompt))

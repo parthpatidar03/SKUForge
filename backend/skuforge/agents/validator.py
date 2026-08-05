@@ -96,13 +96,22 @@ def _group_values(name: str, evidence: list[Evidence], units: list[str],
 
 
 def _confidence(group: list[Evidence], total_sources: int) -> float:
-    """Blend of source trust, corroboration count, and coverage."""
+    """Blend of source trust, corroboration count, and coverage.
+
+    Hard rule: a value seen in only one source is capped below the
+    auto-approve threshold, however authoritative that source is. "One website
+    said so" is exactly the failure mode this system exists to prevent — an
+    uncorroborated spec always goes to a human.
+    """
     if not group:
         return 0.1
     best_trust = max(config.SOURCE_TRUST.get(e.source_type.value, 0.4) for e in group)
     corroboration = min(len(group) / 2, 1.0)          # 2+ agreeing sources = full marks
     coverage = len(group) / max(total_sources, 1)      # how many sources agree vs all seen
-    return round(0.5 * best_trust + 0.35 * corroboration + 0.15 * coverage, 2)
+    score = 0.5 * best_trust + 0.35 * corroboration + 0.15 * coverage
+    if len(group) < 2:
+        score = min(score, config.SINGLE_SOURCE_CEILING)
+    return round(score, 2)
 
 
 def run(

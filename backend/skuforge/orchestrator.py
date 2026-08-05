@@ -52,9 +52,11 @@ def run_sku(
         # single biggest lever on per-SKU latency (each source is a network
         # fetch plus a model call), and it is what makes catalog-scale runs
         # practical.
-        ev("extractor", f"Extracting from {len(sources)} sources in parallel")
+        workers = max(1, min(len(sources), config.MAX_PARALLEL_EXTRACTIONS))
+        ev("extractor",
+           f"Extracting from {len(sources)} sources ({workers} at a time)")
         results: dict[str, tuple] = {}
-        with ThreadPoolExecutor(max_workers=len(sources) or 1) as pool:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
                 pool.submit(extractor.run, src, sku.mpn, category, fk): src
                 for src in sources

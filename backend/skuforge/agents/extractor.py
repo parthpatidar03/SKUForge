@@ -56,6 +56,8 @@ def run(
     if meta is None:
         return None, 0.0, cache.last_failure(source.url)
     source.fetched_at = meta["fetched_at"]
+    # Cite where we actually landed, not the search engine's redirector.
+    source.url = meta.get("final_url") or source.url
 
     prompt = (
         f"Extract product attributes for part MPN '{mpn}' "
@@ -68,7 +70,13 @@ def run(
     )
 
     input_files = None
-    is_pdf = source.is_pdf or "pdf" in meta.get("content_type", "")
+    # Trust the served content type over the classifier's guess: a URL that
+    # merely looks like a PDF is often an HTML redirect, and handing that to
+    # the model as a PDF fails with "the document has no pages".
+    content_type = meta.get("content_type", "").lower()
+    is_pdf = "pdf" in content_type or (
+        source.is_pdf and not content_type.startswith("text/html")
+    )
     if is_pdf:
         b64 = base64.b64encode(Path(meta["body_path"]).read_bytes()).decode()
         input_files = [{

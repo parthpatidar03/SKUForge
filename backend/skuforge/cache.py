@@ -80,6 +80,10 @@ def fetch(url: str, force: bool = False) -> Optional[dict]:
     body_p.write_bytes(r.content)
     meta = {
         "url": url,
+        # Search grounding hands back redirector links (Google's
+        # vertexaisearch grounding-api-redirect, for example). Provenance must
+        # cite the page a human can actually open, so record where we landed.
+        "final_url": str(r.url),
         "content_type": r.headers.get("content-type", ""),
         "body_path": str(body_p),
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

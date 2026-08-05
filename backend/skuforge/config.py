@@ -36,10 +36,15 @@ MODEL_ROUTING = {
         "validator": {"model": "gpt-5.6", "effort": "medium"},
         "composer": {"model": "gpt-5.6", "effort": "low"},
     },
+    # Probed against this key on 5 Aug 2026: gemini-2.5-flash is the only model
+    # with free-tier quota. 2.5-flash-lite is retired for new accounts (404),
+    # and 2.0-flash / 2.5-pro / the 3.x tiers all return 429 RESOURCE_EXHAUSTED.
+    # So the free path routes every stage to one model and leans on `effort`
+    # (thinking budget) to separate cheap steps from expensive judgment.
     "gemini": {
         "scout": {"model": "gemini-2.5-flash", "effort": "low"},
-        "relevance": {"model": "gemini-2.5-flash-lite", "effort": "minimal"},
-        "classifier": {"model": "gemini-2.5-flash-lite", "effort": "minimal"},
+        "relevance": {"model": "gemini-2.5-flash", "effort": "minimal"},
+        "classifier": {"model": "gemini-2.5-flash", "effort": "minimal"},
         "extractor": {"model": "gemini-2.5-flash", "effort": "low"},
         "validator": {"model": "gemini-2.5-flash", "effort": "medium"},
         "composer": {"model": "gemini-2.5-flash", "effort": "low"},
@@ -50,6 +55,9 @@ MODELS = MODEL_ROUTING.get(PROVIDER, MODEL_ROUTING["openai"])
 
 # Trust engine
 AUTO_APPROVE_THRESHOLD = 0.8
+# A value found in exactly one source can never auto-approve, no matter how
+# authoritative that source is — corroboration is the point of the system.
+SINGLE_SOURCE_CEILING = 0.75
 SOURCE_TRUST = {
     "manufacturer": 1.0,
     "distributor": 0.75,
@@ -59,3 +67,9 @@ SOURCE_TRUST = {
 
 MAX_SOURCES_PER_SKU = 5
 FETCH_TIMEOUT_S = 20
+
+# Free tiers cap requests per minute, so fanning out extraction too wide just
+# trades parallelism for 429s. Retries use exponential backoff on top of this.
+MAX_PARALLEL_EXTRACTIONS = 3 if PROVIDER == "gemini" else 5
+LLM_MAX_RETRIES = 4
+LLM_BACKOFF_BASE_S = 8

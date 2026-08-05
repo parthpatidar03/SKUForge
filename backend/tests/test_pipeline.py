@@ -32,3 +32,16 @@ def test_verified_needs_two_sources():
     assert amp.status == AttributeStatus.verified
     assert len(amp.evidence) >= 2
     assert amp.confidence >= 0.9
+
+
+def test_single_source_never_auto_approves():
+    """One authoritative source is still one source — it must reach a human."""
+    from skuforge import config
+
+    record = run_sku(SKU)
+    singles = [a for a in record.attributes if len(a.evidence) < 2]
+    assert singles, "fixture should contain single-source attributes"
+    for attr in singles:
+        assert attr.confidence < config.AUTO_APPROVE_THRESHOLD, (
+            f"{attr.name} auto-approved on a single source"
+        )
