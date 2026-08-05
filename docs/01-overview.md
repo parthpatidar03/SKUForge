@@ -31,8 +31,8 @@ Every value in the output answers three questions: **what is it, where did it co
 ## Technologies used
 
 - **Python + FastAPI** — backend and agent orchestration (hand-written async loop, no agent framework — easier to debug and defend)
-- **OpenAI Responses API** — GPT-5 family: built-in web search for discovery, strict Structured Outputs for extraction (schema-guaranteed JSON), native PDF/image input for datasheets (vision-language capability)
-- **Model routing** — cheap models (gpt-5-nano/mini) for high-volume steps, flagship (gpt-5.6) only for validation and final copy → cost stays pennies per product
+- **Two interchangeable AI providers** — the system needs exactly three model capabilities (web search with citations, PDF/image reading, and guaranteed-shape JSON output), and both **OpenAI's GPT-5 family** and **Google's Gemini** provide all three. One environment variable switches between them; no other code changes. Gemini's free tier means the whole system can run at zero cost.
+- **Model routing** — cheap small models for the high-volume steps, the strongest model only for validation and final copy → cost stays at pennies per product (or nothing at all on the free tier)
 - **Server-Sent Events (SSE)** — streams each agent's actions to the browser in real time (the "agent theatre")
 - **SQLite + disk cache** — product records + every fetched page/PDF cached so nothing is downloaded twice
 - **Next.js + Tailwind CSS** — dashboard: live pipeline view, confidence bars, evidence panels, review queue, batch stats

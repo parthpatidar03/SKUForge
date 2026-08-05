@@ -72,16 +72,30 @@ and no conflicts; else needs-review. Human review (approve/edit/reject per
 attribute) promotes record → approved.
 ```
 
-## Model routing (config.MODELS)
+## Providers and model routing (config.MODEL_ROUTING)
 
-| Stage | Model | reasoning.effort | Rationale |
-|---|---|---|---|
-| scout | gpt-5-mini | low | web_search tool call, moderate volume |
-| relevance | gpt-5-nano | minimal | URL classification, cheapest |
-| classifier | gpt-5-mini | low | single enum pick |
-| extractor | gpt-5-mini | low | schema does the heavy lifting; multimodal for PDFs |
-| validator | gpt-5.6 | medium | highest-stakes judgment (equivalence) |
-| composer | gpt-5.6 | low | customer-visible copy quality |
+`SKUFORGE_PROVIDER=openai|gemini` selects the whole routing table. Because
+`llm.py` is the only module that touches a vendor SDK, no agent knows or cares
+which is active.
+
+| Stage | OpenAI | Gemini | effort | Rationale |
+|---|---|---|---|---|
+| scout | gpt-5-mini | gemini-2.5-flash | low | grounded web search |
+| relevance | gpt-5-nano | gemini-2.5-flash-lite | minimal | URL classification, cheapest tier |
+| classifier | gpt-5-mini | gemini-2.5-flash-lite | minimal/low | single enum pick |
+| extractor | gpt-5-mini | gemini-2.5-flash | low | schema does the work; multimodal for PDFs |
+| validator | gpt-5.6 | gemini-2.5-flash | medium | highest-stakes judgment (equivalence) |
+| composer | gpt-5.6 | gemini-2.5-flash | low | customer-visible copy quality |
+
+`effort` maps to `reasoning.effort` on OpenAI and to a thinking-token budget on
+Gemini (`minimal` 0 → `high` 8192).
+
+The pipeline needs exactly three model capabilities: **grounded web search with
+citations**, **PDF/image parsing**, and **schema-constrained JSON**. Both
+vendors provide all three, and Gemini's free tier does so at zero cost —
+which is why the abstraction exists. Gemini cannot combine a response schema
+with the search tool in one call, but that constraint is free here: the two
+call shapes were already separate by design.
 
 Cost tracked per call from token usage × price table (llm.PRICES), accumulated
 onto the record (`cost_usd`) → powers the cost-per-SKU stat.

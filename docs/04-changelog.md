@@ -130,6 +130,39 @@ platform.openai.com to resume live runs. Total spend across all live runs so far
 was about **$0.11**. Mock mode (`SKUFORGE_MOCK=1`) still runs the full pipeline
 and the entire UI offline.
 
+## 5 Aug 2026 — Session 6: vendor independence (free-tier path)
+
+OpenAI credits ran out and buying more wasn't wanted, so the pipeline became
+**provider-pluggable**. `llm.py` was already the only module touching a vendor,
+so this cost no changes to any agent — the dispatch lives entirely inside it.
+
+- `config.MODEL_ROUTING` now holds a per-stage table **per provider**, selected
+  by `SKUFORGE_PROVIDER=openai|gemini`.
+- Gemini path (`google-genai` SDK): `response_schema` for structured output,
+  `Tool(google_search=GoogleSearch())` for grounding — citations read out of
+  `grounding_metadata.grounding_chunks[].web.uri/title`, the same
+  `{url, title}` shape the OpenAI path produces — and `inline_data` for PDF
+  vision.
+- `_sanitize_schema()` strips the JSON Schema keywords Gemini's OpenAPI-subset
+  dialect rejects (`additionalProperties`, `min/maxLength`, `minimum`,
+  `maximum`, `strict`), so agents keep authoring **one** schema for both.
+- OpenAI-shaped file content parts are translated to Gemini `inline_data` at
+  the boundary.
+
+**Why Gemini specifically:** the pipeline needs three capabilities — web
+grounding with citations, PDF/vision parsing, and schema-constrained JSON — and
+Gemini's free tier covers all three. Its one restriction (a response schema and
+the search tool cannot be combined in a single call) costs nothing here,
+because `call_structured()` and `call_web_search()` were already separate.
+
+Verified without spending anything: provider switch selects the Gemini routing
+table, the sanitizer removes `additionalProperties` while keeping `enum`/
+`required`, and the SDK imports. Suite still 5 passing.
+
+**Architecturally this is worth more than the money it saves** — "swap the model
+vendor with one environment variable" is a direct answer to a judge asking how
+the design avoids lock-in.
+
 ### Still pending
 - Category template tuning across more verticals
 - Batch dashboard UI (backend endpoints already exist)

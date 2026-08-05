@@ -19,10 +19,12 @@ proof) for `POST /api/batch`.
 ## backend/skuforge/
 
 ### `config.py`
-Single source of truth: loads `.env`; `MOCK_MODE` (explicit flag **or** missing
-API key); paths (cache dir, SQLite, fixtures); `MODELS` routing table (stage →
-model + reasoning effort); `AUTO_APPROVE_THRESHOLD = 0.8`; `SOURCE_TRUST`
-tiers (manufacturer 1.0 → other 0.4); fetch limits.
+Single source of truth: loads `.env`; `PROVIDER` (`openai`|`gemini`) and the
+matching API key; `MOCK_MODE` (explicit flag **or** missing key for the active
+provider); paths (cache dir, SQLite, fixtures); `MODEL_ROUTING` — a per-stage
+model + effort table **per provider**, with `MODELS` resolving to the active
+one; `AUTO_APPROVE_THRESHOLD = 0.8`; `SOURCE_TRUST` tiers (manufacturer 1.0 →
+other 0.4); fetch limits.
 
 ### `models.py`
 Pydantic types shared by pipeline, API, and frontend contract:
@@ -32,11 +34,18 @@ human_reviewed), `ProductRecord` (+`RecordStatus`, cost, duration),
 `PipelineEvent` (agent, step, detail — the SSE payload).
 
 ### `llm.py`
-Only file that talks to OpenAI. `call_structured()` — strict json_schema
-Responses call, optional extra content parts for PDF/image input.
-`call_web_search()` — Responses call with the built-in `web_search` tool,
-harvests `url_citation` annotations. Both short-circuit to fixture JSON in mock
-mode. `PRICES` table + `_cost()` compute per-call USD from token usage.
+Only file that talks to a model vendor, and the seam that makes the pipeline
+provider-agnostic. Two public calls: `call_structured()` (schema-constrained
+JSON, optional PDF/image parts) and `call_web_search()` (grounded free text +
+`{url, title}` citations). Each dispatches on `config.PROVIDER` to an
+OpenAI implementation (Responses API: `text.format` json_schema,
+`tools=[web_search]`, `url_citation` annotations) or a Gemini one
+(`google-genai`: `response_schema`, `Tool(google_search=GoogleSearch())`,
+citations from `grounding_metadata.grounding_chunks`, PDFs as `inline_data`).
+`_sanitize_schema()` strips JSON Schema keywords Gemini rejects so agents write
+one schema for both. Both paths short-circuit to fixtures in mock mode.
+`PRICES` + `_cost()` compute per-call USD from token usage (Gemini free tier
+priced at zero).
 
 ### `cache.py`
 Disk evidence cache. `fetch()` = cache-or-download (httpx, browser UA,

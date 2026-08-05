@@ -26,8 +26,8 @@ Every attribute ends up `verified` (2+ agreeing sources), `single-source`, `conf
 
 ## Architecture
 
-- **Backend:** Python + FastAPI, hand-rolled async orchestration (no agent framework — the loop is 100 lines and debuggable). SSE streams live agent events to the UI.
-- **LLM:** OpenAI Responses API — built-in `web_search` for discovery, strict Structured Outputs for extraction, native PDF input for datasheets. Model routing per stage (nano → mini → flagship) keeps cost pennies per SKU.
+- **Backend:** Python + FastAPI, hand-rolled async orchestration (no agent framework — the loop is 100 lines and debuggable). SSE streams live agent events to the UI. Per-source extraction runs in parallel, merged deterministically in trust order.
+- **LLM: provider-pluggable.** The pipeline needs three capabilities — grounded web search with citations, PDF/image parsing, schema-constrained JSON — and both OpenAI (Responses API) and Google Gemini (`google-genai`) supply all three. `SKUFORGE_PROVIDER=openai|gemini` swaps vendors; no agent code changes, because `llm.py` is the only module that touches an SDK. **Gemini's free tier runs the whole system at zero cost.** Model routing per stage (cheap tier → flagship) keeps paid runs at pennies per SKU.
 - **Evidence cache:** every fetched page/PDF cached on disk — no re-fetching across a catalog run.
 - **Storage:** SQLite (records as JSON documents).
 - **Mock mode:** `SKUFORGE_MOCK=1` runs the full pipeline against fixtures, zero API calls.
@@ -37,10 +37,13 @@ Every attribute ends up `verified` (2+ agreeing sources), `single-source`, `conf
 ```bash
 cd backend
 pip install -r requirements.txt
-copy .env.example .env   # add your OPENAI_API_KEY
+copy .env.example .env   # set SKUFORGE_PROVIDER and the matching API key
 python -m skuforge.cli HOM230CP "Square D" "30A 2 pole breaker"   # terminal run
 uvicorn skuforge.api:app --reload --port 8000                     # API server
 ```
+
+Free path: get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey), then set `SKUFORGE_PROVIDER=gemini` and `GEMINI_API_KEY=...`.
+With no key at all, `SKUFORGE_MOCK=1` runs the entire pipeline and UI offline against recorded fixtures.
 
 Key endpoints: `POST /api/enrich` · `GET /api/events/{id}` (SSE) · `GET /api/records` · `POST /api/records/{id}/review` (HITL) · `POST /api/batch` (CSV) · `GET /api/stats` · `GET /api/export/{id}.csv`
 
