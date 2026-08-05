@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "skuforge.api:app", "--port", "8000", "--app-dir", "E:/Web Dev/Hackathons/UniHack/backend"],
+      "port": 8000
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "E:/Web Dev/Hackathons/UniHack/frontend", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}
