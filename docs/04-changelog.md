@@ -163,6 +163,60 @@ table, the sanitizer removes `additionalProperties` while keeping `enum`/
 vendor with one environment variable" is a direct answer to a judge asking how
 the design avoids lock-in.
 
+## 5 Aug 2026 — Session 7: running free on Gemini, and a trust-engine bug
+
+Switched to a Gemini key and ran the Leviton switch. Getting there took three
+attempts, each teaching something.
+
+**Model availability had to be probed, not assumed.** `gemini-2.5-flash-lite`
+returns 404 ("no longer available to new users"), and `gemini-2.0-flash`,
+`gemini-2.5-pro` and the whole 3.x range return 429 `RESOURCE_EXHAUSTED` on a
+free key. Only **`gemini-2.5-flash`** has free quota, so every stage routes to
+it and the stages are separated by *thinking budget* rather than by model size.
+Lesson recorded because it will bite again: list and probe models against the
+actual key instead of trusting a docs table.
+
+**Free tiers rate-limit by the minute**, so firing five extractions at once
+caused self-inflicted 429s. Added `_with_retry()` — exponential backoff with
+jitter, and deliberately *no* retry for quota exhaustion (`insufficient_quota`),
+since waiting cannot fix a spent balance. Extraction fan-out is now capped per
+provider (`MAX_PARALLEL_EXTRACTIONS`: 3 on Gemini, 5 on OpenAI).
+
+### The important find: single-source values were auto-approving
+
+The first successful Gemini run returned `auto-approved` off **one** source.
+The confidence blend was `0.5·trust + 0.35·corroboration + 0.15·coverage`, so a
+lone manufacturer source scored `0.5 + 0.175 + 0.15 = 0.825` — over the 0.8
+threshold. High source trust alone was clearing the bar with nothing
+corroborating it, which is precisely the failure this project exists to
+prevent.
+
+Fixed with a hard rule rather than a re-weighting: **a value found in exactly
+one source is capped at `SINGLE_SOURCE_CEILING` (0.75) and always goes to a
+human**, however authoritative that source is. Locked in by
+`test_single_source_never_auto_approves`.
+
+### Three more defects from the same run
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Evidence links pointed at `vertexaisearch.cloud.google.com/grounding-api-redirect/…` | Gemini grounding returns redirector URLs, so provenance cited Google instead of the real page | `cache` records the post-redirect `final_url`; the extractor rewrites the source to cite where it landed — links are now `leviton.com`, `zoro.com` |
+| `400 INVALID_ARGUMENT: The document has no pages` | URLs that *look* like PDFs are often HTML redirects, but were sent to the model as PDFs | served content type decides `is_pdf`, overriding the classifier's guess |
+| Free run reported a cost of $0.0251 | Gemini models were missing from `PRICES`, so the default rate applied | Gemini entries priced at zero |
+
+### Result — Leviton 1451-2W, entirely free
+
+10 attributes in 115 s at **$0.00**. Sources cited: `leviton.com/assets/PDS/
+1451-2W.pdf`, `leviton.com/en/products/1451-2w`, `zoro.com`, plus a distributor
+spec sheet. Five attributes verified at 1.00 (amperage, colour, country of
+origin, UPC, wiring type), four capped at 0.75 as single-source, and one genuine
+conflict surfaced — `switch_type`: "Toggle Switch" (manufacturer) vs "Single
+Pole Toggle AC Quiet" (distributor). Status `needs-review`, correctly.
+
+The category-aware schema also proved itself: this record carries `colour`,
+`wiring_type` and `number_of_gangs` — switch attributes that do not exist on the
+breaker template.
+
 ### Still pending
 - Category template tuning across more verticals
 - Batch dashboard UI (backend endpoints already exist)

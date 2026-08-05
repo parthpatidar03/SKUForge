@@ -60,6 +60,11 @@ Orchestrator (skuforge/orchestrator.py — sync state machine run in a thread,
    │       - corroboration: min(agreeing_sources/2, 1)
    │       - coverage: agreeing/total sources
    │       - conflicts hard-capped at 0.5 → can never auto-approve
+   │       - SINGLE-SOURCE CAP (0.75): a value seen in only one source can
+   │         never auto-approve, however authoritative. Without this a lone
+   │         manufacturer source scored 0.825 and cleared the 0.8 threshold —
+   │         "one website said so" is the failure mode this system exists to
+   │         prevent, so corroboration is mandatory, not merely weighted.
    │
    └─ 5. COMPOSER (agents/composer.py)
          • gpt-5.6 (low effort) writes seo_title, short/long description,
@@ -142,13 +147,32 @@ onto the record (`cost_usd`) → powers the cost-per-SKU stat.
 
 ## Measured live performance (single SKU, cold cache)
 
-| Metric | Value |
-|---|---|
-| Wall time | ~87 s |
-| Cost | $0.022–0.027 (≈ ₹2) vs ₹150–250 manual |
-| Sources found / usable | 5 / 3 (manufacturer HTML 403s; PDFs succeed) |
-| Attributes produced | 12–13 |
-| Genuine conflicts surfaced | 1–2 |
+| Metric | OpenAI (gpt-5 family) | Gemini free tier |
+|---|---|---|
+| Wall time | ~87 s | ~115 s |
+| Cost per SKU | $0.022–0.027 (≈ ₹2) | **$0.00** |
+| Sources found / usable | 5 / 3 | 5 / 2 |
+| Attributes produced | 12–13 | 10 |
+| Genuine conflicts surfaced | 1–2 | 1 |
+
+Manual enrichment of the same record costs a content team ₹150–250. Sources are
+lost to bot-blocking (403), 404s, and connect timeouts — the pipeline treats
+partial source coverage as normal and reports which sources failed and why.
+
+## Rate limits and retries
+
+`llm._with_retry()` wraps every model call: exponential backoff with jitter on
+429/`RESOURCE_EXHAUSTED`, up to `LLM_MAX_RETRIES`. Quota *exhaustion*
+(`insufficient_quota`) is deliberately **not** retried — waiting cannot refill a
+spent balance, so it fails fast. Extraction fan-out is capped per provider
+(`MAX_PARALLEL_EXTRACTIONS`) so a free tier's per-minute limit isn't tripped by
+our own parallelism.
+
+**Model availability must be probed, not assumed.** On a free Gemini key,
+`gemini-2.5-flash-lite` 404s as retired for new users and `gemini-2.0-flash`,
+`gemini-2.5-pro` and the 3.x range all 429; only `gemini-2.5-flash` has free
+quota. The routing table records this, and the stages are differentiated by
+thinking budget instead of by model tier.
 
 ## API surface (skuforge/api.py)
 

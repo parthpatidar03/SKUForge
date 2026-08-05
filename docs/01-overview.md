@@ -43,8 +43,16 @@ Every value in the output answers three questions: **what is it, where did it co
 Enriching a real Square D breaker from just `HOM230CP / Square D / "30A 2 pole
 breaker"` takes about **87 seconds and 2 rupees**, and produces 12–13
 specifications, each traced to the exact sentence in a manufacturer or
-distributor spec sheet. Manual enrichment of the same record costs a content
-team ₹150–250 and takes far longer.
+distributor spec sheet. On Google's free tier the same work costs **nothing at
+all** — a Leviton light switch produced 10 attributes in under two minutes for
+₹0, citing Leviton's own PDF and a Zoro listing. Manual enrichment of the same
+record costs a content team ₹150–250 and takes far longer.
+
+The most valuable bug we found was in the trust logic itself: a specification
+backed by only *one* website was scoring high enough to auto-approve, because
+the source was authoritative. That is exactly the mistake the system exists to
+prevent, so the rule is now absolute — **if only one source says it, a human
+checks it**, no matter who that source is.
 
 Real-world lessons already baked in: manufacturer websites block bots (their
 spec-sheet PDFs don't, so the system prefers those), and different sources often
