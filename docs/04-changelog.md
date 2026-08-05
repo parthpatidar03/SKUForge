@@ -96,6 +96,40 @@ the lever that makes catalog-scale batches practical.
 12–13 attributes from 3 usable sources, 1–2 genuine conflicts surfaced for
 human review.
 
+## 5 Aug 2026 — Session 5: second category + resilience
+
+**Cross-category test through the UI.** Ran a Leviton `1451-2W` switch from the
+dashboard. Scout found 5 sources and **all 5 were usable** (2 manufacturer +
+3 distributor, 51 raw attribute extractions — much richer than the breaker,
+whose manufacturer pages 403'd). The classifier correctly routed it to the
+**Switch (Wiring Device)** template rather than circuit_breaker, confirming the
+category-aware schema generalizes. Live SSE streaming in the browser worked
+throughout.
+
+**The run then failed at 155 s.** Root cause was **not** a code defect: the
+OpenAI account hit `credit_balance_exhausted` (HTTP 429) partway through the
+validator's equivalence calls. Three real problems surfaced anyway:
+
+| Problem | Fix |
+|---|---|
+| The API layer swallowed the exception (`except Exception: pass`), so the traceback never reached the server log — the failure was invisible | `logger.exception()` in `api.py`; failures are now logged with record id and MPN |
+| A late failure discarded **everything**, including 51 successful extractions and all validated attributes | orchestrator now keeps partial work: on a late exception the record is saved as `needs-review` with its attributes intact, and only marked `failed` if nothing was validated |
+| One failed equivalence call could sink the whole validation pass | `_group_values()` falls back to deterministic buckets on API error — differing values are reported as a conflict for a human instead of being lost |
+
+Composer failures are handled separately: validated attributes are the
+expensive part of the pipeline, so copywriting is wrapped in its own try and a
+failure there just leaves the copy fields blank and flags the record for review.
+
+Added `tests/test_resilience.py` — asserts attributes survive a composer failure
+and that an early (scout) failure still marks the record failed. **Suite: 5 tests
+passing.**
+
+### Blocked
+**The OpenAI account has no credits remaining.** Add credits at
+platform.openai.com to resume live runs. Total spend across all live runs so far
+was about **$0.11**. Mock mode (`SKUFORGE_MOCK=1`) still runs the full pipeline
+and the entire UI offline.
+
 ### Still pending
 - Category template tuning across more verticals
 - Batch dashboard UI (backend endpoints already exist)

@@ -38,6 +38,22 @@ Every value in the output answers three questions: **what is it, where did it co
 - **Next.js + Tailwind CSS** — dashboard: live pipeline view, confidence bars, evidence panels, review queue, batch stats
 - **Mock mode** — full pipeline runs offline against recorded fixtures; used for tests and demo reliability
 
+## Where it stands (live, on real websites)
+
+Enriching a real Square D breaker from just `HOM230CP / Square D / "30A 2 pole
+breaker"` takes about **87 seconds and 2 rupees**, and produces 12–13
+specifications, each traced to the exact sentence in a manufacturer or
+distributor spec sheet. Manual enrichment of the same record costs a content
+team ₹150–250 and takes far longer.
+
+Real-world lessons already baked in: manufacturer websites block bots (their
+spec-sheet PDFs don't, so the system prefers those), and different sources often
+state the same fact at different levels of detail — which the system now
+recognizes as agreement rather than crying "conflict". What it *does* flag are
+genuine disagreements, like two different barcodes or a net weight of 0.65 lb
+against a shipping weight of 1 lb. Those go to a human; everything else
+auto-approves.
+
 ## Built for
 
 UniHack 2026 (Unilog AI Hackathon) — solo, ~3-4 hours/day. Challenge: "turn minimal product information into rich, structured, commerce-ready product intelligence."

@@ -117,6 +117,14 @@ onto the record (`cost_usd`) → powers the cost-per-SKU stat.
    (`blocked (403)`, `no readable text`, `ReadTimeout`). Manufacturer HTML
    pages are frequently bot-protected, so the system is designed to lean on
    their spec-sheet PDFs — Scout ranks PDFs first within each trust tier.
+10. **Graceful degradation over all-or-nothing.** Enrichment is expensive and
+    mostly front-loaded (fetching and extracting sources), so a late failure
+    must not discard it. Three layers: a failed equivalence call falls back to
+    deterministic bucketing (values differ → reported as a conflict, not lost);
+    a failed composer leaves copy blank but keeps every attribute; any other
+    late exception saves the record as `needs-review` with whatever was
+    validated, reserving `failed` for runs that produced nothing. Verified by
+    `tests/test_resilience.py`.
 
 ## Measured live performance (single SKU, cold cache)
 

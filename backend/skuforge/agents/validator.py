@@ -79,14 +79,19 @@ def _group_values(name: str, evidence: list[Evidence], units: list[str],
     listing = "\n".join(
         f"{i}: '{ev.raw_value}' {units[i]}" for i, ev in enumerate(evidence)
     )
-    result = llm.call_structured(
-        "validator",
-        f"Attribute '{name}' has these values from different sources:\n{listing}\n\n"
-        f"Group the indexes: values that are the SAME fact expressed differently "
-        f"(unit conversion, formatting, abbreviation) go in one group. "
-        f"Genuinely different facts go in separate groups.",
-        EQUIV_SCHEMA, "equivalence", fixture_key=fixture_key,
-    )
+    try:
+        result = llm.call_structured(
+            "validator",
+            f"Attribute '{name}' has these values from different sources:\n{listing}\n\n"
+            f"Group the indexes: values that are the SAME fact expressed differently "
+            f"(unit conversion, formatting, abbreviation) go in one group. "
+            f"Genuinely different facts go in separate groups.",
+            EQUIV_SCHEMA, "equivalence", fixture_key=fixture_key,
+        )
+    except Exception:
+        # Fall back to the deterministic buckets. Values stay separate, so the
+        # attribute is reported as a conflict for a human rather than lost.
+        return list(buckets.values()), 0.0
     return result.data["groups"], result.cost_usd
 
 

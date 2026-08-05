@@ -26,6 +26,7 @@ def run_sku(
     started = time.monotonic()
     record = ProductRecord(id=rid, input=sku)
     fk = _fixture_key(sku) if config.MOCK_MODE else None
+    copy_failed = False
 
     def ev(agent: str, step: str, **detail):
         if emit:
@@ -93,24 +94,39 @@ def run_sku(
            f"{len(attrs)} attributes merged, {len(conflicts)} conflicts flagged",
            conflicts=[a.name for a in conflicts])
 
+        # Copywriting is the last and least critical stage: validated
+        # attributes are the expensive part, so an API failure here must not
+        # discard them.
         ev("composer", "Writing commerce copy")
-        copy, c5 = composer.run(sku, template["label"], attrs, certs, fixture_key=fk)
-        record.seo_title = copy["seo_title"]
-        record.short_description = copy["short_description"]
-        record.long_description = copy["long_description"]
-        record.search_synonyms = copy["search_synonyms"]
-        record.cost_usd += c5
+        try:
+            copy, c5 = composer.run(
+                sku, template["label"], attrs, certs, fixture_key=fk
+            )
+            record.seo_title = copy["seo_title"]
+            record.short_description = copy["short_description"]
+            record.long_description = copy["long_description"]
+            record.search_synonyms = copy["search_synonyms"]
+            record.cost_usd += c5
+        except Exception as exc:
+            copy_failed = True
+            ev("composer", f"Copy generation failed, keeping attributes: {exc}")
 
-        needs_review = any(
-            a.confidence < config.AUTO_APPROVE_THRESHOLD for a in attrs
-        ) or bool(conflicts) or not attrs
+        needs_review = (
+            any(a.confidence < config.AUTO_APPROVE_THRESHOLD for a in attrs)
+            or bool(conflicts)
+            or not attrs
+            or copy_failed
+        )
         record.status = (
             RecordStatus.needs_review if needs_review else RecordStatus.auto_approved
         )
     except Exception as exc:
-        record.status = RecordStatus.failed
-        ev("orchestrator", f"Pipeline failed: {exc}")
-        raise
+        # Keep whatever was validated — a partial record with sourced
+        # attributes is far more useful than losing the run entirely.
+        record.status = (
+            RecordStatus.needs_review if record.attributes else RecordStatus.failed
+        )
+        ev("orchestrator", f"Pipeline stopped early: {exc}")
     finally:
         record.duration_s = round(time.monotonic() - started, 1)
         store.save(record)

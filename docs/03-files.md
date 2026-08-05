@@ -123,6 +123,9 @@ something real to flag in tests and demos.
 ## backend/tests/
 `test_pipeline.py` — end-to-end run, conflict detection assertions, verified
 status requiring 2+ evidence.
+`test_resilience.py` — validated attributes survive a composer/API failure
+(record becomes `needs-review`, not `failed`); an early scout failure still
+marks the record `failed`.
 
 ## frontend/
 Next.js 15 App Router + Tailwind, TypeScript.

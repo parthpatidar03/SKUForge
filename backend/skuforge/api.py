@@ -5,7 +5,7 @@ Run: uvicorn skuforge.api:app --reload --port 8000
 import asyncio
 import csv
 import io
-import json
+import logging
 import uuid
 
 from fastapi import FastAPI, HTTPException, UploadFile
@@ -16,6 +16,8 @@ from pydantic import BaseModel
 from . import config, store
 from .models import AttributeStatus, PipelineEvent, RecordStatus, SKUInput
 from .orchestrator import run_sku
+
+logger = logging.getLogger("skuforge")
 
 app = FastAPI(title="SKUForge", version="0.1.0")
 app.add_middleware(
@@ -45,7 +47,9 @@ async def _run_in_thread(sku: SKUInput, record_id: str) -> None:
     try:
         await asyncio.to_thread(run_sku, sku, emit, record_id)
     except Exception:
-        pass  # record already saved as failed by orchestrator
+        # Record is already persisted as failed by the orchestrator, but the
+        # traceback must still reach the server log or failures are invisible.
+        logger.exception("pipeline failed for record %s (%s)", record_id, sku.mpn)
     finally:
         queue = _event_queues.get(record_id)
         if queue:
