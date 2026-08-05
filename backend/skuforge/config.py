@@ -71,5 +71,8 @@ FETCH_TIMEOUT_S = 20
 # Free tiers cap requests per minute, so fanning out extraction too wide just
 # trades parallelism for 429s. Retries use exponential backoff on top of this.
 MAX_PARALLEL_EXTRACTIONS = 3 if PROVIDER == "gemini" else 5
+# How many SKUs a catalog run processes at once. Multiplied by the per-SKU
+# extraction fan-out, this is the real concurrency the provider sees.
+BATCH_CONCURRENCY = 2 if PROVIDER == "gemini" else 4
 LLM_MAX_RETRIES = 4
 LLM_BACKOFF_BASE_S = 8

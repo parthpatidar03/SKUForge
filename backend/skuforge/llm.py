@@ -13,6 +13,7 @@ response schema with the google_search tool, and the pipeline never needs to.
 """
 import json
 import random
+import re
 import time
 from typing import Any, Optional
 
@@ -36,27 +37,59 @@ THINKING_BUDGET = {"minimal": 0, "low": 512, "medium": 2048, "high": 8192}
 _clients: dict[str, Any] = {}
 
 
+class QuotaExhausted(RuntimeError):
+    """Daily/plan quota is spent. Unlike a per-minute rate limit, no amount of
+    waiting inside this run will fix it, so it fails fast and loudly."""
+
+
 def _is_rate_limit(exc: Exception) -> bool:
     text = str(exc)
     return "429" in text or "RESOURCE_EXHAUSTED" in text or "rate_limit" in text
 
 
+def _is_exhausted(exc: Exception) -> bool:
+    text = str(exc)
+    return (
+        "insufficient_quota" in text
+        or "credit_balance" in text
+        or "PerDay" in text  # e.g. GenerateRequestsPerDayPerProjectPerModel-FreeTier
+    )
+
+
+def _retry_after(exc: Exception) -> float | None:
+    """Providers often say exactly how long to wait ("Please retry in 50.8s")."""
+    m = re.search(r"retry in ([\d.]+)s", str(exc))
+    return float(m.group(1)) if m else None
+
+
 def _with_retry(fn):
-    """Rate limits are the normal state of a free tier, not an error. Retry
-    them with exponential backoff and jitter; surface everything else at once.
-    Quota exhaustion (no credits / daily cap) is not retried — waiting cannot
-    fix it."""
+    """Per-minute rate limits are the normal state of a free tier, not an
+    error: retry them with backoff, honouring the provider's own retry hint
+    when it gives one. Daily/plan exhaustion is raised immediately as
+    QuotaExhausted — grinding through four backoffs against a limit that
+    resets tomorrow only wastes time and hides the real cause."""
     last: Exception | None = None
     for attempt in range(config.LLM_MAX_RETRIES):
         try:
             return fn()
         except Exception as exc:
-            if not _is_rate_limit(exc) or "insufficient_quota" in str(exc):
+            if _is_exhausted(exc):
+                raise QuotaExhausted(
+                    f"{config.PROVIDER} quota exhausted for this period — "
+                    f"add credits, switch SKUFORGE_PROVIDER, or use "
+                    f"SKUFORGE_MOCK=1. Original: {exc}"
+                ) from exc
+            if not _is_rate_limit(exc):
                 raise
             last = exc
             if attempt == config.LLM_MAX_RETRIES - 1:
                 break
-            delay = config.LLM_BACKOFF_BASE_S * (2**attempt) + random.uniform(0, 2)
+            hinted = _retry_after(exc)
+            delay = (
+                hinted + random.uniform(0, 2)
+                if hinted is not None and hinted <= 90
+                else config.LLM_BACKOFF_BASE_S * (2**attempt) + random.uniform(0, 2)
+            )
             time.sleep(delay)
     raise last  # type: ignore[misc]
 

@@ -191,6 +191,19 @@ function AttributeRow({
   );
 }
 
+type RecordSummary = {
+  id: string;
+  mpn: string;
+  brand: string;
+  category: string;
+  status: string;
+  seo_title: string;
+  attribute_count: number;
+  conflict_count: number;
+  duration_s: number;
+  cost_usd: number;
+};
+
 export default function Home() {
   const [mpn, setMpn] = useState("HOM230CP");
   const [brand, setBrand] = useState("Square D");
@@ -199,18 +212,34 @@ export default function Home() {
   const [record, setRecord] = useState<ProductRecord | null>(null);
   const [running, setRunning] = useState(false);
   const [stats, setStats] = useState<Record<string, number | boolean> | null>(null);
+  const [catalog, setCatalog] = useState<RecordSummary[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
 
   const refreshStats = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/api/stats`);
-      if (r.ok) setStats(await r.json());
+      const [s, r] = await Promise.all([
+        fetch(`${API}/api/stats`),
+        fetch(`${API}/api/records`),
+      ]);
+      if (s.ok) setStats(await s.json());
+      if (r.ok) setCatalog(await r.json());
     } catch {}
   }, []);
 
   useEffect(() => {
     refreshStats();
+    // The catalog view is a live picture of a running batch.
+    const t = setInterval(refreshStats, 5000);
+    return () => clearInterval(t);
   }, [refreshStats]);
+
+  const openRecord = async (id: string) => {
+    const r = await fetch(`${API}/api/records/${id}`);
+    if (r.ok) {
+      setRecord(await r.json());
+      setEvents([]);
+    }
+  };
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
@@ -322,6 +351,61 @@ export default function Home() {
                 </div>
               ))}
               {running && <div className="text-zinc-500 animate-pulse">▌</div>}
+            </div>
+          </section>
+        )}
+
+        {catalog.length > 0 && (
+          <section className="bg-zinc-900 border border-zinc-800 rounded-lg">
+            <h2 className="text-sm font-medium text-zinc-400 px-4 py-3 border-b border-zinc-800">
+              Catalog — {catalog.length} enriched SKUs
+              <span className="text-zinc-600 font-normal">
+                {" "}· click any row to inspect its evidence
+              </span>
+            </h2>
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  {catalog.map((r) => (
+                    <tr
+                      key={r.id}
+                      onClick={() => openRecord(r.id)}
+                      className="border-b border-zinc-800/70 last:border-0 hover:bg-zinc-800/40 cursor-pointer"
+                    >
+                      <td className="px-4 py-2 font-mono text-zinc-300 w-36">
+                        {r.mpn}
+                      </td>
+                      <td className="py-2 text-zinc-400 w-28">{r.brand}</td>
+                      <td className="py-2 text-zinc-500 w-40">{r.category || "—"}</td>
+                      <td className="py-2 text-zinc-300 w-20 tabular-nums">
+                        {r.attribute_count} attrs
+                      </td>
+                      <td className="py-2 w-24">
+                        {r.conflict_count > 0 ? (
+                          <span className="text-red-400">
+                            {r.conflict_count} conflict
+                          </span>
+                        ) : (
+                          <span className="text-zinc-600">clean</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-right">
+                        <span
+                          className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                            r.status === "auto-approved" || r.status === "approved"
+                              ? STATUS_BADGE.verified
+                              : r.status === "failed"
+                                ? STATUS_BADGE.conflict
+                                : STATUS_BADGE["single-source"]
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
         )}

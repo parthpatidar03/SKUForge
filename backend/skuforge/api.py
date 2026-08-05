@@ -30,6 +30,17 @@ app.add_middleware(
 # record_id -> asyncio.Queue of PipelineEvent (None terminates the stream)
 _event_queues: dict[str, asyncio.Queue] = {}
 
+# Caps how many SKUs run at once. Without it a catalog upload starts every row
+# simultaneously and the provider rate-limits us for our own impatience.
+_run_slots: asyncio.Semaphore | None = None
+
+
+def _slots() -> asyncio.Semaphore:
+    global _run_slots
+    if _run_slots is None:  # created lazily so it binds to the running loop
+        _run_slots = asyncio.Semaphore(config.BATCH_CONCURRENCY)
+    return _run_slots
+
 
 def _emit_factory(record_id: str, loop: asyncio.AbstractEventLoop):
     queue: asyncio.Queue = asyncio.Queue()
@@ -45,7 +56,8 @@ async def _run_in_thread(sku: SKUInput, record_id: str) -> None:
     loop = asyncio.get_running_loop()
     emit = _emit_factory(record_id, loop)
     try:
-        await asyncio.to_thread(run_sku, sku, emit, record_id)
+        async with _slots():
+            await asyncio.to_thread(run_sku, sku, emit, record_id)
     except Exception:
         # Record is already persisted as failed by the orchestrator, but the
         # traceback must still reach the server log or failures are invisible.
@@ -180,7 +192,14 @@ async def batch(file: UploadFile):
 async def stats():
     """Batch dashboard numbers: throughput, cost, auto-approval rate."""
     records = store.list_all()
-    done = [r for r in records if r.status != RecordStatus.processing]
+    # Quality rates describe records the pipeline actually produced. Runs that
+    # failed outright (no attributes) are reported separately rather than
+    # dragging down the averages.
+    done = [
+        r for r in records
+        if r.status not in (RecordStatus.processing, RecordStatus.failed)
+    ]
+    failed = [r for r in records if r.status == RecordStatus.failed]
     auto = [r for r in done if r.status == RecordStatus.auto_approved]
     total_attrs = sum(len(r.attributes) for r in done)
     flagged_attrs = sum(
@@ -191,6 +210,7 @@ async def stats():
     return {
         "total_records": len(records),
         "completed": len(done),
+        "failed": len(failed),
         "auto_approved": len(auto),
         "auto_approval_rate": round(len(auto) / len(done), 3) if done else 0,
         "total_cost_usd": round(sum(r.cost_usd for r in done), 4),
