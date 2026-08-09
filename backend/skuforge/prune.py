@@ -24,10 +24,17 @@ def choose_keepers() -> tuple[list, list]:
             continue
         key = f"{r.input.brand.lower()}|{r.input.mpn.lower()}"
         current = best.get(key)
-        if current is None or (
-            len(r.attributes),
-            r.created_at,
-        ) > (len(current.attributes), current.created_at):  # type: ignore[union-attr]
+        # A live-provider record must never lose to a mock replay, however
+        # recent — test runs re-save mock records with a fresh timestamp, and
+        # ranking on (attrs, created_at) alone let a fake record win the slot
+        # a real enrichment had earned. Provider authenticity outranks both.
+        rank = (r.provider != "mock", len(r.attributes), r.created_at)
+        current_rank = (
+            (current.provider != "mock", len(current.attributes), current.created_at)  # type: ignore[union-attr]
+            if current is not None
+            else None
+        )
+        if current_rank is None or rank > current_rank:
             best[key] = r
     keep_ids = {r.id for r in best.values()}  # type: ignore[attr-defined]
     return list(best.values()), [r for r in records if r.id not in keep_ids]
