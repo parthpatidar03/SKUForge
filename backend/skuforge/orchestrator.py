@@ -25,7 +25,11 @@ def run_sku(
 ) -> ProductRecord:
     rid = record_id or uuid.uuid4().hex[:12]
     started = time.monotonic()
-    record = ProductRecord(id=rid, input=sku)
+    record = ProductRecord(
+        id=rid,
+        input=sku,
+        provider="mock" if config.MOCK_MODE else config.PROVIDER,
+    )
     fk = _fixture_key(sku) if config.MOCK_MODE else None
     copy_failed = False
 

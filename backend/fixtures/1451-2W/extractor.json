@@ -1,0 +1,119 @@
+{
+  "https://www.leviton.com/en/products/1451-2w": {
+    "attributes": [
+      {
+        "name": "amperage_rating",
+        "value": "15",
+        "unit": "A",
+        "quote": "15 Amp"
+      },
+      {
+        "name": "color",
+        "value": "White",
+        "unit": "",
+        "quote": "Color : White"
+      },
+      {
+        "name": "country_of_origin",
+        "value": "USA",
+        "unit": "",
+        "quote": "Made in USA"
+      },
+      {
+        "name": "upc_gtin",
+        "value": "078477778203",
+        "unit": "",
+        "quote": "UPC : 078477778203"
+      },
+      {
+        "name": "wiring_type",
+        "value": "Quickwire Push-In & Side",
+        "unit": "",
+        "quote": "Termination : Quickwire Push-In & Side"
+      },
+      {
+        "name": "material",
+        "value": "Thermoplastic",
+        "unit": "",
+        "quote": "Actuator Material : Thermoplastic"
+      },
+      {
+        "name": "number_of_gangs",
+        "value": "1",
+        "unit": "pole",
+        "quote": "Pole : 1"
+      },
+      {
+        "name": "voltage_rating",
+        "value": "120",
+        "unit": "VAC",
+        "quote": "120 VAC"
+      },
+      {
+        "name": "warranty",
+        "value": "2-Year Limited",
+        "unit": "",
+        "quote": "Warranty : 2-Year Limited"
+      },
+      {
+        "name": "switch_type",
+        "value": "Toggle Switch",
+        "unit": "",
+        "quote": "Type : Toggle Switch"
+      }
+    ],
+    "image_urls": [],
+    "certifications": [
+      "UL",
+      "CSA"
+    ],
+    "equivalent_mpns": [
+      "1451-2",
+      "1451-2T"
+    ]
+  },
+  "https://www.zoro.com/leviton-15-amps-single-pole-toggle-ac-quiet-switch-white-1-pk-01451-02w/i/G205302715/": {
+    "attributes": [
+      {
+        "name": "amperage_rating",
+        "value": "15",
+        "unit": "A",
+        "quote": "15 amps"
+      },
+      {
+        "name": "color",
+        "value": "White",
+        "unit": "",
+        "quote": "White"
+      },
+      {
+        "name": "country_of_origin",
+        "value": "United States",
+        "unit": "",
+        "quote": "Country of Origin United States"
+      },
+      {
+        "name": "upc_gtin",
+        "value": "78477778203",
+        "unit": "",
+        "quote": "UPC # 78477778203"
+      },
+      {
+        "name": "wiring_type",
+        "value": "Quick wire push-in and side",
+        "unit": "",
+        "quote": "Quick wire push-in and side wired"
+      },
+      {
+        "name": "switch_type",
+        "value": "Single Pole Toggle AC Quiet",
+        "unit": "",
+        "quote": "Single Pole Toggle AC Quiet Switch"
+      }
+    ],
+    "image_urls": [],
+    "certifications": [],
+    "equivalent_mpns": []
+  },
+  "default": null
+}

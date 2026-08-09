@@ -72,8 +72,34 @@ def _group_values(name: str, evidence: list[Evidence], units: list[str],
                 buckets[keep] = sorted(buckets[keep] + buckets[drop])
                 del buckets[drop]
 
-    if len(buckets) == 1 or config.MOCK_MODE:
+    if len(buckets) == 1:
         return list(buckets.values()), 0.0
+
+    if config.MOCK_MODE:
+        # Replay the equivalence decisions recorded from the live run, keyed by
+        # attribute name (same shape as the extractor's per-URL fixture). Values
+        # not covered by the fixture fall back to deterministic buckets.
+        try:
+            recorded = llm.call_structured(
+                "validator", "", {}, fixture_key=fixture_key
+            ).data
+        except Exception:
+            return list(buckets.values()), 0.0
+        value_groups = (recorded or {}).get(name)
+        if not value_groups:
+            return list(buckets.values()), 0.0
+        groups: list[list[int]] = []
+        for wanted in value_groups:
+            members = [
+                i for i, ev in enumerate(evidence) if ev.raw_value in wanted
+            ]
+            if members:
+                groups.append(members)
+        placed = {i for g in groups for i in g}
+        leftover = [i for i in range(len(evidence)) if i not in placed]
+        if leftover:
+            groups.append(leftover)
+        return (groups or list(buckets.values())), 0.0
 
     # Textual mismatch — ask the model if values are equivalent (e.g. 0.5in vs 1/2").
     listing = "\n".join(

@@ -1,5 +1,5 @@
 {
   "category": "circuit_breaker",
-  "confidence": 0.97,
-  "reasoning": "MPN pattern HOM2xx and description indicate a Square D Homeline miniature circuit breaker."
+  "confidence": 0.95,
+  "reasoning": "Recorded from a live run of HOM230CP."
 }

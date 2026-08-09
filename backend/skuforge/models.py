@@ -77,6 +77,10 @@ class ProductRecord(BaseModel):
     equivalent_mpns: list[str] = []
     sources: list[Source] = []
     status: RecordStatus = RecordStatus.processing
+    # Which backend produced this record: "openai", "gemini", or "mock".
+    # Without it, a fixture-replayed record is indistinguishable from a real
+    # one — and snapshotting a replay would regenerate fixtures from fixtures.
+    provider: str = ""
     cost_usd: float = 0.0
     duration_s: float = 0.0
     created_at: str = Field(

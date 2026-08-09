@@ -1,8 +1,34 @@
 {
   "sources": [
-    {"url": "https://www.se.com/us/en/product/HOM230CP/", "title": "Square D Homeline HOM230CP 30A 2-Pole Circuit Breaker", "source_type": "manufacturer", "is_pdf": false},
-    {"url": "https://www.se.com/us/en/product/download-pdf/HOM230CP", "title": "HOM230CP Product Datasheet (PDF)", "source_type": "manufacturer", "is_pdf": true},
-    {"url": "https://www.grainger.com/product/SQUARE-D-Miniature-Circuit-Breaker-1D237", "title": "SQUARE D Miniature Circuit Breaker, 30 A - Grainger", "source_type": "distributor", "is_pdf": false},
-    {"url": "https://www.zoro.com/square-d-circuit-breaker-hom230cp", "title": "Square D HOM230CP Circuit Breaker - Zoro", "source_type": "distributor", "is_pdf": false}
+    {
+      "url": "https://www.se.com/us/en/product/HOM230CP/mini-circuit-breaker-homeline-30a-2-pole-120-240vac-10ka-air-standard-type-plug-in-ul/",
+      "title": "HOM230CP - Official Schneider Electric / Square D product page",
+      "source_type": "manufacturer",
+      "is_pdf": false
+    },
+    {
+      "url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+      "title": "Square D HOM230 specification sheet (PDF)",
+      "source_type": "distributor",
+      "is_pdf": true
+    },
+    {
+      "url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+      "title": "Homeline_HOM230CP.pdf (Home Depot PDF)",
+      "source_type": "distributor",
+      "is_pdf": true
+    },
+    {
+      "url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+      "title": "Square D HOM230CP Specification Sheet (Unilog PDF)",
+      "source_type": "distributor",
+      "is_pdf": true
+    },
+    {
+      "url": "https://www.homedepot.com/p/202353325",
+      "title": "Square D Homeline 30-Amp 2-Pole Circuit Breaker (HOM230CP) (Home Depot product page)",
+      "source_type": "distributor",
+      "is_pdf": false
+    }
   ]
 }

@@ -1,0 +1,34 @@
+{
+  "sources": [
+    {
+      "url": "https://www.leviton.com/assets/PDS/1451-2W.pdf",
+      "title": "1451-2W (Direct PDF from Leviton)",
+      "source_type": "manufacturer",
+      "is_pdf": true
+    },
+    {
+      "url": "https://www.leviton.com/en/products/1451-2w",
+      "title": "1451-2W | Products - Leviton",
+      "source_type": "manufacturer",
+      "is_pdf": false
+    },
+    {
+      "url": "https://therc.com/documents/SpecificationSheet_55636002_SpecificationSheet.pdf",
+      "title": "Specification Sheet (via The Reynolds Company)",
+      "source_type": "distributor",
+      "is_pdf": true
+    },
+    {
+      "url": "https://therc.com/product/leviton-1451-2w",
+      "title": "Leviton\n 1451-2W | The Reynolds Company",
+      "source_type": "distributor",
+      "is_pdf": false
+    },
+    {
+      "url": "https://www.zoro.com/leviton-15-amps-single-pole-toggle-ac-quiet-switch-white-1-pk-01451-02w/i/G205302715/",
+      "title": "Leviton 15 amps Single Pole Toggle AC Quiet Switch White 1 pk 01451-02W | Zoro",
+      "source_type": "distributor",
+      "is_pdf": false
+    }
+  ]
+}

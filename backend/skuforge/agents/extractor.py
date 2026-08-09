@@ -50,7 +50,11 @@ def run(
     if config.MOCK_MODE:
         result = llm.call_structured("extractor", "", {}, fixture_key=fixture_key)
         per_url = result.data  # fixture: {url: extraction, "default": extraction}
-        return per_url.get(source.url, per_url.get("default")), 0.0, ""
+        extraction = per_url.get(source.url, per_url.get("default"))
+        if extraction is None:
+            # Sources absent from the fixture were unusable in the recorded run.
+            return None, 0.0, "unusable in recorded run"
+        return extraction, 0.0, ""
 
     meta = cache.fetch(source.url)
     if meta is None:

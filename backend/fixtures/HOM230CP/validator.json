@@ -1,0 +1,25 @@
+{
+  "wire_size_range": [
+    [
+      "1 x AWG 14...AWG 8 ( aluminium/copper ); 2 x AWG 14...AWG 10 ( copper )",
+      "AWG 14...AWG 8 (aluminium/copper); AWG 14...AWG 10 (copper)",
+      "AWG 14...AWG 8 aluminium/copper)1; AWG 14...AWG 10 copper)2"
+    ]
+  ],
+  "upc_gtin": [
+    [
+      "00047569062773"
+    ],
+    [
+      "785901065296"
+    ]
+  ],
+  "weight_lbs": [
+    [
+      "0.65"
+    ],
+    [
+      "1"
+    ]
+  ]
+}
