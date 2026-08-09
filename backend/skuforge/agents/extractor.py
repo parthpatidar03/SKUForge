@@ -94,8 +94,11 @@ def run(
             return None, 0.0, "no readable text"
         prompt += f"\n\nSOURCE CONTENT:\n{text}"
 
+    # PDFs need a vision-capable model, which is not always the same one used
+    # for HTML text (free text models cannot read datasheets at all).
     result = llm.call_structured(
-        "extractor", prompt, _schema(attr_names), "extraction",
+        "extractor_pdf" if is_pdf else "extractor",
+        prompt, _schema(attr_names), "extraction",
         fixture_key=fixture_key, input_files=input_files,
     )
     return result.data, result.cost_usd, ""

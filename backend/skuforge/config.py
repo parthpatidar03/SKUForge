@@ -9,13 +9,22 @@ load_dotenv(BACKEND_DIR / ".env")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
-# Which vendor backs the pipeline. Every stage runs through llm.py, so this is
-# the only switch needed: "openai" or "gemini" (Gemini has a free tier).
+# Which profile backs the pipeline: "openai", "gemini", "openrouter", or
+# "hybrid". Every stage runs through llm.py, so this is the only switch needed.
 PROVIDER = os.getenv("SKUFORGE_PROVIDER", "openai").lower()
 
-API_KEYS = {"openai": OPENAI_API_KEY, "gemini": GEMINI_API_KEY}
-ACTIVE_KEY = API_KEYS.get(PROVIDER, "")
+API_KEYS = {
+    "openai": OPENAI_API_KEY,
+    "gemini": GEMINI_API_KEY,
+    "openrouter": OPENROUTER_API_KEY,
+}
+# A hybrid profile needs every vendor it routes to.
+if PROVIDER == "hybrid":
+    ACTIVE_KEY = GEMINI_API_KEY and OPENROUTER_API_KEY
+else:
+    ACTIVE_KEY = API_KEYS.get(PROVIDER, "")
 MOCK_MODE = os.getenv("SKUFORGE_MOCK", "0") == "1" or not ACTIVE_KEY
 
 CACHE_DIR = BACKEND_DIR / "cache"
@@ -33,6 +42,7 @@ MODEL_ROUTING = {
         "relevance": {"model": "gpt-5-nano", "effort": "minimal"},
         "classifier": {"model": "gpt-5-mini", "effort": "low"},
         "extractor": {"model": "gpt-5-mini", "effort": "low"},
+        "extractor_pdf": {"model": "gpt-5-mini", "effort": "low"},
         "validator": {"model": "gpt-5.6", "effort": "medium"},
         "composer": {"model": "gpt-5.6", "effort": "low"},
     },
@@ -46,8 +56,53 @@ MODEL_ROUTING = {
         "relevance": {"model": "gemini-2.5-flash", "effort": "minimal"},
         "classifier": {"model": "gemini-2.5-flash", "effort": "minimal"},
         "extractor": {"model": "gemini-2.5-flash", "effort": "low"},
+        "extractor_pdf": {"model": "gemini-2.5-flash", "effort": "low"},
         "validator": {"model": "gemini-2.5-flash", "effort": "medium"},
         "composer": {"model": "gemini-2.5-flash", "effort": "low"},
+    },
+    # Free OpenRouter models. Verified against the live catalogue: these are the
+    # ones advertising structured outputs. None accept PDFs, so this profile
+    # cannot do datasheet vision — use "hybrid" for that.
+    "openrouter": {
+        "scout": {"model": "nvidia/nemotron-3-super-120b-a12b:free", "effort": "low"},
+        "relevance": {"model": "nvidia/nemotron-nano-9b-v2:free", "effort": "minimal"},
+        "classifier": {"model": "nvidia/nemotron-nano-9b-v2:free", "effort": "minimal"},
+        "extractor": {"model": "nvidia/nemotron-3-super-120b-a12b:free", "effort": "low"},
+        "extractor_pdf": {"model": "google/gemma-4-31b-it:free", "effort": "low"},
+        "validator": {"model": "nvidia/nemotron-3-super-120b-a12b:free", "effort": "medium"},
+        "composer": {"model": "nvidia/nemotron-3-super-120b-a12b:free", "effort": "low"},
+    },
+    # The zero-cost production profile. Gemini's free tier is metered at 20
+    # calls/day, so it is spent only where nothing else is free: grounded web
+    # search and PDF datasheet vision. Every text-only stage runs on free
+    # OpenRouter models, cutting Gemini usage from ~8 calls per SKU to ~2-3.
+    "hybrid": {
+        "scout": {
+            "provider": "gemini", "model": "gemini-2.5-flash", "effort": "low",
+        },
+        "relevance": {
+            "provider": "openrouter",
+            "model": "nvidia/nemotron-nano-9b-v2:free", "effort": "minimal",
+        },
+        "classifier": {
+            "provider": "openrouter",
+            "model": "nvidia/nemotron-nano-9b-v2:free", "effort": "minimal",
+        },
+        "extractor": {
+            "provider": "openrouter",
+            "model": "nvidia/nemotron-3-super-120b-a12b:free", "effort": "low",
+        },
+        "extractor_pdf": {
+            "provider": "gemini", "model": "gemini-2.5-flash", "effort": "low",
+        },
+        "validator": {
+            "provider": "openrouter",
+            "model": "nvidia/nemotron-3-super-120b-a12b:free", "effort": "medium",
+        },
+        "composer": {
+            "provider": "openrouter",
+            "model": "nvidia/nemotron-3-super-120b-a12b:free", "effort": "low",
+        },
     },
 }
 
@@ -70,9 +125,9 @@ FETCH_TIMEOUT_S = 20
 
 # Free tiers cap requests per minute, so fanning out extraction too wide just
 # trades parallelism for 429s. Retries use exponential backoff on top of this.
-MAX_PARALLEL_EXTRACTIONS = 3 if PROVIDER == "gemini" else 5
+MAX_PARALLEL_EXTRACTIONS = 3 if PROVIDER in ("gemini", "hybrid", "openrouter") else 5
 # How many SKUs a catalog run processes at once. Multiplied by the per-SKU
 # extraction fan-out, this is the real concurrency the provider sees.
-BATCH_CONCURRENCY = 2 if PROVIDER == "gemini" else 4
+BATCH_CONCURRENCY = 2 if PROVIDER in ("gemini", "hybrid", "openrouter") else 4
 LLM_MAX_RETRIES = 4
 LLM_BACKOFF_BASE_S = 8

@@ -213,6 +213,8 @@ export default function Home() {
   const [running, setRunning] = useState(false);
   const [stats, setStats] = useState<Record<string, number | boolean> | null>(null);
   const [catalog, setCatalog] = useState<RecordSummary[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [batchNote, setBatchNote] = useState("");
   const logRef = useRef<HTMLDivElement>(null);
 
   const refreshStats = useCallback(async () => {
@@ -232,6 +234,30 @@ export default function Home() {
     const t = setInterval(refreshStats, 5000);
     return () => clearInterval(t);
   }, [refreshStats]);
+
+  const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setBatchNote("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch(`${API}/api/batch`, { method: "POST", body });
+      const data = await res.json();
+      setBatchNote(
+        res.ok
+          ? `Enriching ${data.count} SKUs — the catalog below fills in as each finishes.`
+          : `Upload failed: ${data.detail ?? res.statusText}`,
+      );
+    } catch (err) {
+      setBatchNote(`Upload failed: ${String(err)}`);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+      refreshStats();
+    }
+  };
 
   const openRecord = async (id: string) => {
     const r = await fetch(`${API}/api/records/${id}`);
@@ -334,6 +360,26 @@ export default function Home() {
               {running ? "Enriching…" : "Enrich"}
             </button>
           </div>
+
+          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-zinc-800">
+            <span className="text-xs text-zinc-500">
+              Or enrich a whole catalog — CSV with columns{" "}
+              <code className="text-zinc-400">mpn,brand,description</code>
+            </span>
+            <label className="ml-auto text-xs px-3 py-1.5 rounded border border-zinc-700 hover:bg-zinc-800 cursor-pointer">
+              {uploading ? "Uploading…" : "Upload CSV"}
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={onUpload}
+                disabled={uploading}
+              />
+            </label>
+          </div>
+          {batchNote && (
+            <p className="text-xs text-zinc-400 mt-2">{batchNote}</p>
+          )}
         </section>
 
         {events.length > 0 && (

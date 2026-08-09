@@ -29,6 +29,13 @@ PRICES = {
     "gemini-2.5-flash-lite": (0.0, 0.0),
     "gemini-3.6-flash": (0.0, 0.0),
     "gemini-3.5-flash-lite": (0.0, 0.0),
+    # Free OpenRouter tier. Real fallback pricing must never apply to a model
+    # whose name ends ":free" — that produced a fabricated $0.02 cost on a run
+    # that used zero paid tokens.
+    "nvidia/nemotron-3-super-120b-a12b:free": (0.0, 0.0),
+    "nvidia/nemotron-nano-9b-v2:free": (0.0, 0.0),
+    "google/gemma-4-31b-it:free": (0.0, 0.0),
+    "openai/gpt-oss-20b:free": (0.0, 0.0),
 }
 
 # Gemini thinking budgets (tokens) per effort level.
@@ -101,7 +108,17 @@ class LLMResult:
         self.raw_text = raw_text
 
 
+def _vendor_for(route: dict) -> str:
+    """A stage may name its own vendor (the hybrid profile does); otherwise the
+    profile name is the vendor."""
+    return route.get("provider", config.PROVIDER)
+
+
 def _cost(model: str, tokens_in: int, tokens_out: int) -> float:
+    if model.endswith(":free"):
+        # Any OpenRouter free-tier model, present or future — never guess a
+        # paid rate for something that cannot bill.
+        return 0.0
     pin, pout = PRICES.get(model, (1.0, 4.0))
     return (tokens_in * pin + tokens_out * pout) / 1_000_000
 
@@ -171,6 +188,54 @@ def _openai_web_search(route, prompt) -> LLMResult:
         {"text": resp.output_text, "citations": urls},
         _cost(route["model"], u.input_tokens, u.output_tokens),
         resp.output_text,
+    )
+
+
+# --------------------------------------------------------------------------
+# OpenRouter (OpenAI-compatible; used for its free model tier)
+# --------------------------------------------------------------------------
+
+def _openrouter_client():
+    if "openrouter" not in _clients:
+        from openai import OpenAI
+        _clients["openrouter"] = OpenAI(
+            api_key=config.OPENROUTER_API_KEY,
+            base_url="https://openrouter.ai/api/v1",
+            default_headers={
+                # OpenRouter attributes free-tier usage to a referring app.
+                "HTTP-Referer": "https://github.com/skuforge",
+                "X-Title": "SKUForge",
+            },
+        )
+    return _clients["openrouter"]
+
+
+def _openrouter_structured(route, prompt, schema, schema_name, input_files) -> LLMResult:
+    content: list[dict] = [{"type": "text", "text": prompt}]
+    for part in input_files or []:
+        # Free OpenRouter models accept images, not PDFs; anything else is
+        # dropped rather than sent as an argument the model will reject.
+        data_uri = part.get("file_data", "")
+        if data_uri.startswith("data:image"):
+            content.append({"type": "image_url", "image_url": {"url": data_uri}})
+
+    resp = _openrouter_client().chat.completions.create(
+        model=route["model"],
+        messages=[{"role": "user", "content": content}],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {"name": schema_name, "strict": True, "schema": schema},
+        },
+    )
+    text = (resp.choices[0].message.content or "").strip()
+    if text.startswith("```"):  # some open models still fence their JSON
+        text = text.split("```")[1].removeprefix("json").strip()
+    u = resp.usage
+    return LLMResult(
+        json.loads(text),
+        _cost(route["model"], getattr(u, "prompt_tokens", 0) or 0,
+              getattr(u, "completion_tokens", 0) or 0),
+        text,
     )
 
 
@@ -291,8 +356,15 @@ def call_structured(
     if config.MOCK_MODE:
         return LLMResult(_mock_fixture(stage, fixture_key))
     route = config.MODELS[stage]
-    if config.PROVIDER == "gemini":
+    vendor = _vendor_for(route)
+    if vendor == "gemini":
         return _with_retry(lambda: _gemini_structured(route, prompt, schema, input_files))
+    if vendor == "openrouter":
+        return _with_retry(
+            lambda: _openrouter_structured(
+                route, prompt, schema, schema_name, input_files
+            )
+        )
     return _with_retry(
         lambda: _openai_structured(route, prompt, schema, schema_name, input_files)
     )
@@ -307,6 +379,14 @@ def call_web_search(
     if config.MOCK_MODE:
         return LLMResult(_mock_fixture(stage, fixture_key))
     route = config.MODELS[stage]
-    if config.PROVIDER == "gemini":
+    vendor = _vendor_for(route)
+    if vendor == "gemini":
         return _with_retry(lambda: _gemini_web_search(route, prompt))
+    if vendor == "openrouter":
+        # No free OpenRouter model carries a grounded-search tool, so this
+        # would silently return ungrounded prose passed off as sourced facts.
+        raise RuntimeError(
+            "Web search is not available on free OpenRouter models. Use "
+            "SKUFORGE_PROVIDER=hybrid, which routes search to Gemini."
+        )
     return _with_retry(lambda: _openai_web_search(route, prompt))
