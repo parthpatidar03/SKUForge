@@ -1,0 +1,9 @@
+# Personal/internal reference — planning notes, session docs, competitor
+# research. Kept locally for the author's own use, never pushed to a public
+# remote.
+PLAN.md
+docs/
+unilog-research.md
+
+# Claude Code project config (dev-server shortcuts, local paths)
+.claude/
