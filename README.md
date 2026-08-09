@@ -4,6 +4,13 @@
 
 Built solo for **UniHack 2026**, the Unilog AI Hackathon.
 
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-async%20pipeline-009688?logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-dashboard-000000?logo=nextdotjs&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-12%20passing-3E7A52)
+![Cost](https://img.shields.io/badge/cost-%240.00%20per%20SKU-B8631F)
+![Providers](https://img.shields.io/badge/providers-4%20swappable-6B6152)
+
 ```
 INPUT   HOM230CP · Square D · "30A 2 pole breaker"
                               ↓
@@ -99,11 +106,36 @@ Every number below came from an **actual live run against the real public intern
 | **Leviton 1451-2W** (switch) | `switch` | 5 / 2 | 10 | 1 | 115 s | **$0.00** |
 | **Square D QO120** (breaker) | `circuit_breaker` | 5 / 1 | 6 | 0 | 148 s | **$0.00** |
 
+### Where those 13 attributes landed
+
+Real trust breakdown from the Square D HOM230CP run — not an illustration:
+
+```mermaid
+pie showData
+    title HOM230CP — 13 attributes by trust status
+    "verified — 2+ sources agree" : 9
+    "single-source — capped, human-reviewed" : 2
+    "conflict — sources disagree, human decides" : 2
+```
+
+Nine attributes were corroborated well enough to stand on their own. Four were not — and the system says so rather than shipping them silently.
+
 **What the conflicts actually caught** — these are real disagreements between real documents, exactly the errors that would otherwise enter a catalog silently:
 
 - **`weight_lbs`** — Home Depot's PDF says `0.65 lb`, the Unilog-hosted spec sheet says `1 lb`. Net weight versus shipping weight. Flagged, not guessed.
 - **`upc_gtin`** — two sources reported genuinely different GTINs for the same MPN.
 - **`switch_type`** — Leviton's own datasheet says `"Toggle Switch"`; the distributor listing says `"Single Pole Toggle AC Quiet"`.
+
+### What this replaces
+
+| Approach | Time per SKU | Cost per SKU | Relative cost | Audit trail |
+|---|---|---|---|---|
+| Human content team | hours – days | ₹150 – 250 | `████████████████████` | undocumented judgement |
+| Naive LLM ("just ask it") | seconds | ₹1 – 5 | `▌` | **none — hallucination risk** |
+| **SKUForge** (paid profile) | ~90 s | ~₹2 | `▌` | cited · scored · conflict-flagged |
+| **SKUForge** (hybrid, free) | ~90 s | **₹0** | ` ` | cited · scored · conflict-flagged |
+
+The naive-LLM row is the important comparison. It is as cheap and fast as SKUForge — and unusable, because nothing in its output can be checked. Cost was never the hard part of this problem; **trust** was.
 
 **Note on source availability:** of 5 discovered sources, typically only 1–3 are usable. Manufacturer HTML product pages routinely return **HTTP 403** to automated clients; some links 404 or time out. SKUForge treats partial source coverage as the normal case, reports *why* each source failed, and adjusts confidence accordingly instead of pretending it had full coverage.
 
@@ -111,38 +143,73 @@ Every number below came from an **actual live run against the real public intern
 
 ## Architecture
 
-```
-   INPUT: mpn + brand + one-line description
-                    │
-   ┌────────────────▼─────────────────────────────────────────────┐
-   │  ORCHESTRATOR — async state machine, emits live SSE events    │
-   └────────────────┬─────────────────────────────────────────────┘
-                    │
-   ①  SCOUT       ──▶ grounded web search → candidate evidence documents
-                      ranks by trust tier; prefers PDFs (HTML often 403s)
-                    │
-   ②  CLASSIFIER  ──▶ product category → loads that category's attribute
-                      template (a breaker needs poles/amperage; a valve
-                      needs pressure/connection size)
-                    │
-   ③  EXTRACTOR   ──▶ ALL SOURCES IN PARALLEL
-                      HTML → cached text  |  PDF → native vision input
-                      strict JSON schema; every value carries its quote
-                    │
-   ④  VALIDATOR   ──▶ ★ THE TRUST ENGINE ★
-                      cross-source merge · unit-aware equivalence
-                      confidence scoring · explicit conflict detection
-                      never silently picks a winner
-                    │
-   ⑤  COMPOSER    ──▶ SEO title, short + long description, search synonyms
-                      written from VERIFIED FACTS ONLY
-                    │
-   ┌────────────────▼─────────────────────────────────────────────┐
-   │  auto-approve ≥ 0.8   │   everything else → human review queue │
-   └───────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    IN["<b>INPUT</b><br/>MPN · brand · one line of text"]
+
+    IN --> S["<b>1 · SCOUT</b><br/>grounded web search → evidence documents<br/><i>ranks by trust tier · prefers PDFs, HTML often 403s</i>"]
+    S --> C["<b>2 · CLASSIFIER</b><br/>product category → loads that category's schema<br/><i>a breaker needs poles/amperage; a valve needs pressure</i>"]
+    C --> E["<b>3 · EXTRACTOR</b> — all sources in parallel<br/>HTML → cached text · PDF → native vision<br/><i>strict JSON schema; every value carries its quote</i>"]
+    E --> V["<b>4 · VALIDATOR — THE TRUST ENGINE</b><br/>cross-source merge · unit-aware equivalence<br/>confidence scoring · explicit conflict detection<br/><i>never silently picks a winner</i>"]
+    V --> CO["<b>5 · COMPOSER</b><br/>SEO title · descriptions · search synonyms<br/><i>written from verified facts only</i>"]
+
+    CO --> GATE{"confidence<br/>≥ 0.80 ?"}
+    GATE -->|yes| AUTO["<b>auto-approved</b><br/>no human touches it"]
+    GATE -->|"no · or any conflict"| HUMAN["<b>human review queue</b><br/>approve · edit · resolve conflict"]
+
+    classDef io fill:#6B6152,stroke:#3d372e,color:#ffffff
+    classDef stage fill:#B8631F,stroke:#7d4315,color:#ffffff
+    classDef trust fill:#8a4a17,stroke:#5c300e,color:#ffffff,stroke-width:3px
+    classDef good fill:#3E7A52,stroke:#2a5439,color:#ffffff
+    classDef review fill:#A8432B,stroke:#742e1e,color:#ffffff
+    classDef gate fill:#9A7A2A,stroke:#6b551d,color:#ffffff
+
+    class IN io
+    class S,C,E,CO stage
+    class V trust
+    class GATE gate
+    class AUTO good
+    class HUMAN review
 ```
 
-**Supporting infrastructure:** disk evidence cache (nothing fetched twice) · SQLite record store · SSE stream powering a live "agent theatre" in the UI · fixture-replay mode that reproduces real runs offline with zero API calls.
+Supporting infrastructure: **disk evidence cache** (nothing fetched twice) · **SQLite record store** · **SSE stream** powering a live "agent theatre" in the UI · **fixture-replay mode** reproducing real runs offline with zero API calls.
+
+### What one enrichment actually looks like
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Dashboard
+    participant API as FastAPI
+    participant ORC as Orchestrator
+    participant WEB as Web · PDFs
+    participant LLM as Models
+
+    UI->>API: POST /api/enrich
+    API-->>UI: record_id
+    UI->>API: GET /api/events/{id} — SSE stream opens
+
+    ORC->>LLM: Scout · grounded search
+    LLM-->>ORC: candidate source URLs
+    ORC-->>UI: "Found 5 sources"
+
+    ORC->>LLM: Classify
+    ORC-->>UI: "circuit_breaker (95%)"
+
+    par all sources extracted concurrently
+        ORC->>WEB: fetch source A (cache miss)
+        ORC->>WEB: fetch source B (PDF)
+        ORC->>WEB: fetch source C (403 — skipped, reason reported)
+    end
+    ORC->>LLM: extract attributes per source
+    ORC-->>UI: "11 attributes · 1 source blocked"
+
+    ORC->>LLM: Validate · merge + score
+    ORC-->>UI: "13 attributes merged, 2 conflicts flagged"
+
+    ORC->>LLM: Compose SEO copy
+    ORC-->>UI: "done · 87s · needs-review"
+```
 
 ### Why hand-rolled orchestration, not an agent framework
 
@@ -153,6 +220,41 @@ A deliberate engineering decision, and one we can defend: the orchestration loop
 ## The Trust Engine — our core contribution
 
 This is what separates SKUForge from "ask an LLM for the specs."
+
+### How every attribute earns its status
+
+```mermaid
+flowchart TD
+    A["one attribute<br/>claimed by N sources"] --> B{"do the sources<br/>disagree?"}
+
+    B -->|"yes"| CONFLICT["<b>conflict</b><br/>confidence capped at 0.50<br/><i>both values kept visible —<br/>never averaged, never guessed</i>"]
+    B -->|"no"| C{"how many sources<br/>agree on it?"}
+
+    C -->|"exactly 1"| SINGLE["<b>single-source</b><br/>confidence capped at 0.75<br/><i>however authoritative that<br/>one source is</i>"]
+    C -->|"2 or more"| VERIFIED["<b>verified</b><br/>confidence up to 1.00"]
+
+    VERIFIED --> GATE{"≥ 0.80 ?"}
+    GATE -->|"yes"| AUTO["<b>auto-approved</b>"]
+    GATE -->|"no"| HUMAN
+
+    CONFLICT --> HUMAN["<b>human review queue</b>"]
+    SINGLE --> HUMAN
+
+    classDef neutral fill:#6B6152,stroke:#3d372e,color:#ffffff
+    classDef gate fill:#9A7A2A,stroke:#6b551d,color:#ffffff
+    classDef bad fill:#A8432B,stroke:#742e1e,color:#ffffff
+    classDef warn fill:#9A7A2A,stroke:#6b551d,color:#ffffff
+    classDef good fill:#3E7A52,stroke:#2a5439,color:#ffffff
+
+    class A neutral
+    class B,C,GATE gate
+    class CONFLICT bad
+    class SINGLE warn
+    class VERIFIED,AUTO good
+    class HUMAN bad
+```
+
+**Read the two red paths carefully — they are the whole point.** Every route that isn't corroborated agreement ends at a human, and no amount of source authority can shortcut it.
 
 ### Every attribute is a claim with a receipt
 
@@ -234,6 +336,35 @@ The pipeline needs exactly **three** model capabilities:
 `llm.py` is the *only* module in the codebase that touches a vendor SDK. That single boundary makes the whole system provider-agnostic — and enabled something more interesting than portability.
 
 **Routing is by capability, not by vendor.** Free model tiers have hard daily caps, and not all of them can search the web or read a PDF. So the `hybrid` profile spends the metered capability only where nothing else can do the job:
+
+```mermaid
+flowchart TD
+    STAGE["a pipeline stage<br/>needs a model"] --> Q1{"needs grounded<br/>web search?"}
+
+    Q1 -->|"yes — Scout"| METERED
+    Q1 -->|"no"| Q2{"needs PDF /<br/>vision parsing?"}
+    Q2 -->|"yes — datasheet extraction"| METERED
+    Q2 -->|"no — text only"| FREE
+
+    METERED["<b>Gemini free tier</b><br/>the only free option with<br/>grounded search + PDF vision<br/><i>hard cap: 20 requests/day</i>"]
+    FREE["<b>OpenRouter free models</b><br/>classify · relevance · extract HTML<br/>validate · compose<br/><i>no per-day request cap</i>"]
+
+    METERED --> RESULT["<b>~2–3 metered calls per SKU</b><br/>(was ~8 before routing)<br/><br/><b>$0.00 per SKU</b>"]
+    FREE --> RESULT
+
+    classDef neutral fill:#6B6152,stroke:#3d372e,color:#ffffff
+    classDef gate fill:#9A7A2A,stroke:#6b551d,color:#ffffff
+    classDef metered fill:#A8432B,stroke:#742e1e,color:#ffffff
+    classDef free fill:#B8631F,stroke:#7d4315,color:#ffffff
+    classDef good fill:#3E7A52,stroke:#2a5439,color:#ffffff
+
+    class STAGE neutral
+    class Q1,Q2 gate
+    class METERED metered
+    class FREE free
+    class RESULT good
+```
+
 
 | Stage | Routed to | Reason |
 |---|---|---|
