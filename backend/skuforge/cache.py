@@ -5,6 +5,7 @@ Demo SKUs get pre-warmed so recorded runs never depend on live sites.
 """
 import hashlib
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Optional
@@ -12,6 +13,8 @@ from typing import Optional
 import httpx
 
 from . import config
+
+logger = logging.getLogger("skuforge")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -69,11 +72,17 @@ def fetch(url: str, force: bool = False) -> Optional[dict]:
         except httpx.HTTPStatusError as exc:
             code = exc.response.status_code
             _FAILURES[url] = "blocked (403)" if code in (401, 403, 429) else f"HTTP {code}"
+            logger.warning("fetch blocked (%s): %s", _FAILURES[url], url)
             return None  # server answered; retrying won't help
         except Exception as exc:
+            # Logged with the message, not just the exception class name — an
+            # SSL/CA failure and a DNS failure both raise generically enough
+            # that the class name alone hides which one actually happened.
             _FAILURES[url] = f"{type(exc).__name__}"
+            logger.warning("fetch failed (attempt %d): %s: %s", attempt + 1, url, exc)
             r = None
     if r is None:
+        logger.warning("fetch exhausted retries, giving up: %s", url)
         return None
     _FAILURES.pop(url, None)
 
