@@ -16,9 +16,19 @@ from . import config
 
 logger = logging.getLogger("skuforge")
 
+# A lone User-Agent is itself a bot signal — real browsers always send an
+# Accept set, a language, and encodings. Sending the full set costs nothing and
+# gets past the least sophisticated filters; the aggressive ones (se.com,
+# zoro.com from a datacenter IP) block on IP reputation and are unaffected,
+# which is why scout ranks CDN-hosted PDFs above those hosts.
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+    "(KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
+    "application/pdf;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Upgrade-Insecure-Requests": "1",
 }
 
 
