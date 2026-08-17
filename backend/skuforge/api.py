@@ -188,6 +188,54 @@ async def batch(file: UploadFile):
     return {"record_ids": record_ids, "count": len(record_ids)}
 
 
+@app.get("/api/_diag/fetch")
+async def diag_fetch(url: str = "https://example.com"):
+    """TEMPORARY diagnostic. Deployed runs return zero attributes with every
+    source unfetched, while the identical code works locally — so this reports
+    the raw exception from an outbound request instead of the swallowed
+    'unreachable' the pipeline surfaces. Remove once the cause is fixed."""
+    import httpx
+
+    from . import cache
+
+    out: dict = {"url": url}
+    try:
+        import socket
+        from urllib.parse import urlparse
+
+        host = urlparse(url).hostname or ""
+        out["dns"] = socket.gethostbyname(host) if host else "no host"
+    except Exception as exc:
+        out["dns"] = f"{type(exc).__name__}: {exc}"
+
+    try:
+        with httpx.Client(
+            headers=cache.HEADERS, timeout=20, follow_redirects=True
+        ) as client:
+            r = client.get(url)
+        out["status"] = r.status_code
+        out["final_url"] = str(r.url)
+        out["content_type"] = r.headers.get("content-type", "")
+        out["bytes"] = len(r.content)
+    except Exception as exc:
+        out["error_type"] = type(exc).__name__
+        out["error"] = str(exc)
+
+    try:
+        config.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        probe = config.CACHE_DIR / ".write_probe"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+        out["cache_dir_writable"] = True
+        out["cache_dir"] = str(config.CACHE_DIR)
+    except Exception as exc:
+        out["cache_dir_writable"] = f"{type(exc).__name__}: {exc}"
+
+    out["provider"] = config.PROVIDER
+    out["mock_mode"] = config.MOCK_MODE
+    return out
+
+
 @app.get("/api/stats")
 async def stats():
     """Batch dashboard numbers: throughput, cost, auto-approval rate."""
