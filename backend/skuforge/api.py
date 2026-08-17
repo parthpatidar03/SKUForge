@@ -37,7 +37,12 @@ def seed_if_empty() -> None:
 
     from .models import ProductRecord
 
-    if store.list_all():
+    # "Nothing worth showing" rather than "no rows": a hosted instance
+    # accumulates failed runs (every source 403s from a datacenter IP), and
+    # those would otherwise suppress the seed and leave an empty-looking
+    # catalog. Any record with real attributes means genuine work exists here
+    # and must not be touched.
+    if any(r.attributes for r in store.list_all()):
         return
     seed = config.BACKEND_DIR / "seed_records.json"
     if not seed.exists():
