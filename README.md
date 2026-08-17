@@ -409,7 +409,7 @@ The economic argument: humans stop transcribing specifications and start adjudic
 
 | | |
 |---|---|
-| **Dashboard** | https://frontend-pi-eight.vercel.app |
+| **Dashboard** | https://skuforge.vercel.app |
 | **API** | https://skuforge-production.up.railway.app/api/records |
 | **Deck** | `SKUForge-UniHack-Prototype.pptx` (submission template, filled) |
 
