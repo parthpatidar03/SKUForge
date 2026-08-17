@@ -3,6 +3,7 @@
 Run: uvicorn skuforge.api:app --reload --port 8000
 """
 import asyncio
+from contextlib import asynccontextmanager
 import csv
 import io
 import logging
@@ -19,10 +20,6 @@ from .orchestrator import run_sku
 
 logger = logging.getLogger("skuforge")
 
-app = FastAPI(title="SKUForge", version="0.1.0")
-
-
-@app.on_event("startup")
 def seed_if_empty() -> None:
     """Load real recorded runs when the store is empty.
 
@@ -53,6 +50,18 @@ def seed_if_empty() -> None:
         logger.info("seeded %s records from seed_records.json", len(store.list_all()))
     except Exception:
         logger.exception("failed to seed records")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # lifespan, not @app.on_event: the latter is removed in Starlette 1.x, and
+    # the deployed image resolves newer FastAPI/Starlette than this machine —
+    # the seed silently never ran in production while passing locally.
+    seed_if_empty()
+    yield
+
+
+app = FastAPI(title="SKUForge", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
