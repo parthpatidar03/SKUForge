@@ -4,6 +4,13 @@
 PLAN.md
 docs/
 unilog-research.md
+HANDOFF.md
 
 # Claude Code project config (dev-server shortcuts, local paths)
 .claude/
+UniHack-Prototype Template/
+
+# Deck build artifacts — rendered slide previews and the extracted template
+# background. The deliverable .pptx is committed; these are regenerable.
+assets/deckpng/
+assets/screens/_tpl_bg.png

@@ -7,7 +7,7 @@ Built solo for **UniHack 2026**, the Unilog AI Hackathon.
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async%20pipeline-009688?logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-dashboard-000000?logo=nextdotjs&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-12%20passing-3E7A52)
+![Tests](https://img.shields.io/badge/tests-18%20passing-3E7A52)
 ![Cost](https://img.shields.io/badge/cost-%240.00%20per%20SKU-B8631F)
 ![Providers](https://img.shields.io/badge/providers-4%20swappable-6B6152)
 
@@ -35,6 +35,7 @@ OUTPUT  13 technical attributes · category · SEO title · short + long descrip
 - [Capability-routed model layer (and why it costs ₹0)](#capability-routed-model-layer-and-why-it-costs-0)
 - [Human-in-the-loop](#human-in-the-loop)
 - [Scaling to a real catalog](#scaling-to-a-real-catalog)
+- [Live deployment](#live-deployment)
 - [Engineering quality](#engineering-quality)
 - [Run it yourself](#run-it-yourself)
 - [Project structure](#project-structure)
@@ -77,10 +78,10 @@ An invented voltage rating on a circuit breaker is not a typo. It is a wrong par
 | Criterion | Where to look |
 |---|---|
 | **Innovation** | The Trust Engine: per-attribute confidence, provenance quotes, and explicit cross-source conflict detection — with a hard rule that an uncorroborated value can *never* auto-approve. Plus capability-routed multi-provider inference that runs the entire system at zero cost. |
-| **Technical implementation** | Hand-rolled async agent orchestration (no framework black box), strict schema-constrained model output, native PDF/vision datasheet parsing, SSE event streaming, deterministic parallel merging, 12 automated tests including replay-fidelity pinning. |
+| **Technical implementation** | Hand-rolled async agent orchestration (no framework black box), strict schema-constrained model output, native PDF/vision datasheet parsing, SSE event streaming, deterministic parallel merging, 18 automated tests including replay-fidelity pinning. |
 | **Business relevance** | Directly targets the human content-team bottleneck. Cost and time modelled against real manual enrichment economics; output shape matches a real commerce-ready record (specs, taxonomy, SEO, certifications, syndication-ready CSV export). |
 | **Scalability** | Batch runner, evidence caching, parallel extraction, provider-level concurrency governors, quota-aware failure handling that stops a catalog run cleanly rather than burning through it. |
-| **Overall impact** | ₹150–250 and hours of human effort per SKU → **~90 seconds and ₹0**, with a stronger audit trail than the manual process it replaces. |
+| **Overall impact** | Hours of human effort per SKU → **~90 seconds**, at a measured **$0.027/SKU paid or $0.00 on free tiers**. Modelled at 100k SKUs: **~$20.5k all-in vs ~$200k manual** — roughly 10× cheaper, with a stronger audit trail than the process it replaces. |
 
 ### Suggested approaches, and which we used
 
@@ -404,9 +405,31 @@ The economic argument: humans stop transcribing specifications and start adjudic
 
 ---
 
+## Live deployment
+
+| | |
+|---|---|
+| **Dashboard** | https://frontend-pi-eight.vercel.app |
+| **API** | https://skuforge-production.up.railway.app/api/records |
+| **Deck** | `SKUForge-UniHack-Prototype.pptx` (submission template, filled) |
+
+**A note on the hosted demo, stated plainly.** Retail and manufacturer product
+pages block datacenter IP ranges. Measured from the deployed container: **0 of
+12** candidate sources fetched, against **5 of 12** from a laptop running
+identical code. The pipeline is correct — that same local run produced 6 merged
+attributes with 3 conflicts flagged — but a hosted instance cannot enrich a
+*cold* SKU on demand.
+
+The deployed API is therefore seeded with **genuine recorded runs**, provider and
+cost preserved exactly as measured (`provider: openai, cost_usd: 0.0272`) — real
+output, not fixtures dressed up as results. Live enrichment of a new SKU runs
+locally and in the demo video. Mitigations already shipped: fetchability-ranked
+sourcing, fetch-screening before extraction, and a datasheet fallback search. A
+proxy or a partner data feed removes the constraint entirely.
+
 ## Engineering quality
 
-**12 automated tests**, all passing, covering the parts that actually matter:
+**18 automated tests**, all passing, covering the parts that actually matter:
 
 | Test module | What it guarantees |
 |---|---|
@@ -414,6 +437,7 @@ The economic argument: humans stop transcribing specifications and start adjudic
 | `test_resilience.py` | A late API failure preserves validated attributes rather than discarding the run; an early failure still marks the record failed |
 | `test_quota.py` | Daily quota fails fast without pointless retries; per-minute limits *do* retry; exhaustion propagates to the caller while partial work is still saved |
 | `test_replay_fidelity.py` | Offline replay reproduces the exact recorded live runs (13 attrs/2 conflicts, 10 attrs/1 conflict) and provenance survives intact |
+| `test_scout_ranking.py` | Sources rank by *fetchability* before trust; a readable CDN PDF outranks a higher-trust page that 403s, and survives the top-N cut |
 
 **Other engineering properties worth noting:**
 
@@ -516,6 +540,15 @@ frontend/
 ## Honest limitations
 
 We would rather state these plainly than have them discovered:
+
+- **We measure confidence, not yet correctness.** Every attribute carries a
+  calibrated confidence score and its supporting evidence, but we have not yet
+  published precision against a hand-verified gold set. For a product whose
+  entire premise is trust, that is the number that matters most, and the next
+  milestone is exactly that: 200 hand-verified SKUs, precision reported per
+  confidence band. Naming the gap is more honest than implying it is closed.
+- **Hosted enrichment of cold SKUs is blocked by datacenter-IP filtering** — see
+  [Live deployment](#live-deployment). Local runs are unaffected.
 
 - **Image sourcing is incomplete.** Datasheet PDFs carry specifications, not product photography, so `image_urls` is frequently empty. Pulling images from distributor listing pages is the natural next step, not something we can claim today.
 - **The demo catalog is small.** Free-tier daily quotas cap throughput at a few SKUs per day, so the live catalog holds a handful of fully-enriched records rather than hundreds. The batch machinery is built, tested, and resumable — the constraint is quota, not code.
