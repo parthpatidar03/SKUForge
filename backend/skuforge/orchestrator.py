@@ -101,6 +101,20 @@ def run_sku(
         # candidates that never returned content wastes the run's quota — and
         # if the few we picked all failed, produced no attributes at all.
         sources = _screen_sources(sources, ev)
+
+        # Grounded search is non-deterministic: the same MPN yields dense CDN
+        # datasheets on one run and dead retailer links on the next. When the
+        # first pass survives thin, one more targeted hunt for PDFs is far
+        # cheaper than a record with nothing in it.
+        if len(sources) < config.MIN_SOURCES_BEFORE_FALLBACK:
+            ev("scout", "Too few readable sources — searching for datasheets")
+            extra, c_fb = scout.run_datasheet_fallback(sku, fixture_key=fk)
+            record.cost_usd += c_fb
+            seen = {s.url for s in sources}
+            extra = [s for s in extra if s.url not in seen]
+            if extra:
+                sources = sources + _screen_sources(extra, ev)
+
         record.sources = sources
         if not sources:
             raise RuntimeError(

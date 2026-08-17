@@ -102,3 +102,54 @@ def run(sku: SKUInput, fixture_key: str | None = None) -> tuple[list[Source], fl
         sources[: config.MAX_SOURCE_CANDIDATES],
         search.cost_usd + classify.cost_usd,
     )
+
+
+def run_datasheet_fallback(
+    sku: SKUInput, fixture_key: str | None = None
+) -> tuple[list[Source], float]:
+    """A second, narrower hunt for spec-sheet PDFs.
+
+    Grounded search is non-deterministic: the same MPN can return dense CDN
+    datasheets on one run and a handful of dead retailer links on the next.
+    When the first pass leaves too little to extract from, this pays for one
+    more search aimed only at the documents that reliably survive fetching.
+    """
+    if config.MOCK_MODE:
+        return [], 0.0
+
+    search = llm.call_web_search(
+        "scout",
+        f"Find the technical specification sheet or product datasheet PDF for "
+        f"{sku.brand} {sku.mpn} ({sku.description}).\n\n"
+        f"Return ONLY direct links to PDF documents — URLs ending in .pdf. "
+        f"Look on manufacturer document servers and distributor asset CDNs "
+        f"(hosts like assets.*, images.*, cdn.*, documents.*, download.*, "
+        f"media.*). Do not return HTML product or category pages. "
+        f"Give every distinct PDF URL you can find.",
+        fixture_key=fixture_key,
+    )
+    classify = llm.call_structured(
+        "relevance",
+        "Extract every PDF document URL from this research output. Classify "
+        "each as 'manufacturer', 'distributor', 'marketplace' or 'other'. "
+        "Skip anything that is not a direct document link.\n\n"
+        + json.dumps(search.data),
+        SOURCE_LIST_SCHEMA,
+        "source_list",
+        fixture_key=fixture_key,
+    )
+
+    sources = [Source(**s) for s in classify.data["sources"]]
+    for s in sources:
+        s.is_pdf = _is_pdf_url(s.url)
+    sources = [s for s in sources if s.is_pdf]
+    sources.sort(
+        key=lambda s: (
+            _likely_blocked(s.url),
+            -config.SOURCE_TRUST.get(s.source_type.value, 0),
+        )
+    )
+    return (
+        sources[: config.MAX_SOURCE_CANDIDATES],
+        search.cost_usd + classify.cost_usd,
+    )

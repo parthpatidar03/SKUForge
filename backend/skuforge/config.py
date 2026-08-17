@@ -136,6 +136,10 @@ MAX_SOURCES_PER_SKU = 5
 # top few links happen to 403 or 404 — routine, since search surfaces dead doc
 # refs and bot-protected retailers — produces no attributes at all.
 MAX_SOURCE_CANDIDATES = 12
+# Below this many readable sources, spend one extra search on a PDF-only hunt.
+# Two is the threshold because corroboration needs two independent sources —
+# with fewer, every attribute is capped as single-source anyway.
+MIN_SOURCES_BEFORE_FALLBACK = 2
 FETCH_TIMEOUT_S = 20
 
 # Free tiers cap requests per minute, so fanning out extraction too wide just
