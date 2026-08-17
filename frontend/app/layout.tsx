@@ -1,29 +1,27 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "SKUForge",
-  description: "Minimal input → commerce-ready product intelligence, with proof",
+  title: "SKUForge — verified product enrichment",
+  description:
+    "Turns a part number, a brand and one line of text into a commerce ready "
+    + "product record, where every attribute carries a confidence score, a "
+    + "cited source and the exact sentence supporting it.",
+  applicationName: "SKUForge",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1B3A8F",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className="h-full antialiased">
+      <body className="min-h-full flex flex-col bg-paper text-ink">
+        {children}
+      </body>
     </html>
   );
 }

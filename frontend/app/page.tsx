@@ -4,9 +4,9 @@ import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-// Free-tier model calls are genuinely slow (docs: 90-150s/SKU). Below this we
-// say nothing; above it we tell the user why, so silence doesn't read as hung.
-const SLOW_THRESHOLD_MS = 12_000;
+// Free tier model calls run 60 to 150 s. Below this we stay quiet; above it we
+// explain, so silence is never mistaken for a hang.
+const SLOW_MS = 12_000;
 
 type Evidence = {
   source_url: string;
@@ -52,42 +52,117 @@ type RecordSummary = {
   brand: string;
   category: string;
   status: string;
-  seo_title: string;
   attribute_count: number;
   conflict_count: number;
   duration_s: number;
   cost_usd: number;
 };
 
-type Toast = { id: number; kind: "success" | "error" | "info"; text: string };
+type Toast = { id: number; kind: "ok" | "bad"; text: string };
 
-const AGENT_COLORS: Record<string, string> = {
-  scout: "text-sky-400",
-  classifier: "text-violet-400",
-  extractor: "text-amber-400",
-  validator: "text-emerald-400",
-  composer: "text-pink-400",
-  orchestrator: "text-zinc-400",
+const AGENT_TONE: Record<string, string> = {
+  scout: "text-accent",
+  classifier: "text-ink-2",
+  extractor: "text-single",
+  validator: "text-verified",
+  composer: "text-accent",
+  orchestrator: "text-ink-3",
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  verified: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  "single-source": "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  conflict: "bg-red-500/15 text-red-400 border-red-500/30",
-  generated: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
-};
-
-function statusBadgeClass(status: string) {
-  if (status === "auto-approved" || status === "approved") return STATUS_BADGE.verified;
-  if (status === "failed") return STATUS_BADGE.conflict;
-  return STATUS_BADGE["single-source"];
+function stateClass(status: string) {
+  if (status === "verified" || status === "human-verified")
+    return "text-verified bg-verified-bg border-verified/30";
+  if (status === "conflict") return "text-conflict bg-conflict-bg border-conflict/30";
+  if (status === "generated") return "text-ink-3 bg-sunken border-line-strong";
+  return "text-single bg-single-bg border-single/30";
 }
 
-// ---------------------------------------------------------------------------
-// Small shared bits: connectivity, toasts, skeletons, retry-able fetch
-// ---------------------------------------------------------------------------
+function recordStateClass(status: string) {
+  if (status === "auto-approved" || status === "approved")
+    return "text-verified bg-verified-bg border-verified/30";
+  if (status === "failed") return "text-conflict bg-conflict-bg border-conflict/30";
+  return "text-single bg-single-bg border-single/30";
+}
 
-function useOnlineStatus() {
+function barColor(v: number) {
+  return v >= 0.8 ? "bg-verified" : v >= 0.5 ? "bg-single" : "bg-conflict";
+}
+
+/* ---------------------------------------------------------------- chrome */
+
+function Mark({ size = 26 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden="true">
+      <rect width="32" height="32" rx="7" className="fill-accent" />
+      <g fill="white" fillOpacity="0.34">
+        <rect x="6" y="6" width="4.5" height="4.5" rx="1.2" />
+        <rect x="13" y="6" width="4.5" height="4.5" rx="1.2" />
+        <rect x="20" y="6" width="4.5" height="4.5" rx="1.2" />
+        <rect x="6" y="13" width="4.5" height="4.5" rx="1.2" />
+        <rect x="20" y="13" width="4.5" height="4.5" rx="1.2" />
+        <rect x="6" y="20" width="4.5" height="4.5" rx="1.2" />
+        <rect x="13" y="20" width="4.5" height="4.5" rx="1.2" />
+        <rect x="20" y="20" width="4.5" height="4.5" rx="1.2" />
+      </g>
+      <g fill="white">
+        <rect x="6" y="20" width="4.5" height="4.5" rx="1.2" />
+        <rect x="13" y="13" width="4.5" height="4.5" rx="1.2" />
+        <rect x="20" y="6" width="4.5" height="4.5" rx="1.2" />
+      </g>
+    </svg>
+  );
+}
+
+function Header({ online }: { online: boolean }) {
+  return (
+    <header className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur-[2px]">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 h-14 flex items-center gap-3">
+        <Mark />
+        <div className="min-w-0">
+          <div className="font-semibold tracking-tight text-[15px] leading-none">
+            SKUForge
+          </div>
+          <div className="hidden sm:block text-[11px] text-ink-3 leading-none mt-1">
+            Verified product enrichment
+          </div>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {!online && (
+            <span className="text-xs text-conflict">Offline</span>
+          )}
+          <a
+            href="https://github.com/parthpatidar03/SKUForge"
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-ink-2 hover:text-accent transition-colors"
+          >
+            Source
+          </a>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="mt-auto border-t border-line">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 py-5 flex flex-col sm:flex-row gap-2 sm:items-center justify-between text-xs text-ink-3">
+        <span>
+          SKUForge, built for UniHack 2026. Every attribute carries its source.
+        </span>
+        <span className="tnum">
+          Confidence at or above 0.80 auto approves. Everything else reaches a
+          human.
+        </span>
+      </div>
+    </footer>
+  );
+}
+
+/* --------------------------------------------------------------- helpers */
+
+function useOnline() {
   const [online, setOnline] = useState(true);
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -103,133 +178,71 @@ function useOnlineStatus() {
   return online;
 }
 
-function useToasts() {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const push = useCallback((kind: Toast["kind"], text: string) => {
-    const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, kind, text }]);
-    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
-  }, []);
-  const dismiss = (id: number) => setToasts((t) => t.filter((x) => x.id !== id));
-  return { toasts, push, dismiss };
-}
-
-function ToastStack({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number) => void }) {
-  if (toasts.length === 0) return null;
-  const style: Record<Toast["kind"], string> = {
-    success: "border-emerald-500/40 bg-emerald-950/90 text-emerald-200",
-    error: "border-red-500/40 bg-red-950/90 text-red-200",
-    info: "border-zinc-700 bg-zinc-900/95 text-zinc-200",
-  };
-  return (
-    <div
-      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[calc(100%-1.5rem)] max-w-sm sm:left-auto sm:right-4 sm:translate-x-0 sm:bottom-4"
-      role="status"
-      aria-live="polite"
-    >
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          onClick={() => dismiss(t.id)}
-          className={`text-sm px-3.5 py-2.5 rounded-lg border shadow-lg backdrop-blur cursor-pointer motion-safe:animate-[toast-in_0.2s_ease-out] ${style[t.kind]}`}
-        >
-          {t.text}
-        </div>
-      ))}
-      <style>{`@keyframes toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-    </div>
-  );
-}
-
-function OfflineBanner({ online }: { online: boolean }) {
-  if (online) return null;
-  return (
-    <div className="rounded-lg border border-amber-500/30 bg-amber-950/40 text-amber-200 text-sm px-4 py-2.5 flex items-center gap-2">
-      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 motion-safe:animate-pulse" />
-      No internet connection — actions will fail until it&apos;s back.
-    </div>
-  );
-}
-
-function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="rounded-lg border border-red-500/30 bg-red-950/30 text-red-200 text-sm px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
-      <span>{message}</span>
-      <button
-        onClick={onRetry}
-        className="shrink-0 px-2.5 py-1 rounded border border-red-500/40 hover:bg-red-500/10 text-xs font-medium min-h-[32px]"
-      >
-        Retry
-      </button>
-    </div>
-  );
-}
-
-function StatSkeleton() {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div
-          key={i}
-          className="bg-zinc-900 border border-zinc-800 rounded-lg py-3 motion-safe:animate-pulse"
-        >
-          <div className="h-5 w-12 bg-zinc-800 rounded mx-auto" />
-          <div className="h-3 w-16 bg-zinc-800 rounded mx-auto mt-2" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RowSkeleton() {
-  return (
-    <div className="motion-safe:animate-pulse space-y-2 p-4">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="h-8 bg-zinc-800/60 rounded" />
-      ))}
-    </div>
-  );
-}
-
-/** Wraps fetch with a timeout + a distinct "still going" flag so slow free-tier
- * requests are visibly explained instead of just looking frozen. */
 async function fetchSlow(
-  input: string,
+  url: string,
   init: RequestInit | undefined,
   onSlow: () => void,
   timeoutMs = 30_000,
-): Promise<Response> {
-  const slowTimer = window.setTimeout(onSlow, SLOW_THRESHOLD_MS);
-  const controller = new AbortController();
-  const abortTimer = window.setTimeout(() => controller.abort(), timeoutMs);
+) {
+  const slow = window.setTimeout(onSlow, SLOW_MS);
+  const ctl = new AbortController();
+  const kill = window.setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetch(input, { ...init, signal: controller.signal });
-    return res;
+    return await fetch(url, { ...init, signal: ctl.signal });
   } finally {
-    window.clearTimeout(slowTimer);
-    window.clearTimeout(abortTimer);
+    window.clearTimeout(slow);
+    window.clearTimeout(kill);
   }
 }
 
-// ---------------------------------------------------------------------------
-
-function ConfidenceBar({ value }: { value: number }) {
-  const color =
-    value >= 0.8 ? "bg-emerald-500" : value >= 0.5 ? "bg-amber-500" : "bg-red-500";
+function Notice({
+  tone = "bad",
+  children,
+  onRetry,
+}: {
+  tone?: "bad" | "warn";
+  children: React.ReactNode;
+  onRetry?: () => void;
+}) {
+  const c =
+    tone === "bad"
+      ? "border-conflict/30 bg-conflict-bg text-conflict"
+      : "border-single/30 bg-single-bg text-single";
   return (
-    <div className="flex items-center gap-2 w-20 sm:w-28 shrink-0">
-      <div className="h-1.5 flex-1 rounded bg-zinc-800">
+    <div
+      className={`rounded-lg border ${c} px-4 py-3 text-sm flex flex-wrap items-center gap-3 justify-between`}
+      role="status"
+    >
+      <span>{children}</span>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="shrink-0 rounded-md border border-current/30 px-2.5 py-1 text-xs font-medium hover:bg-current/5 transition-colors min-h-8"
+        >
+          Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Bar({ value }: { value: number }) {
+  return (
+    <div className="flex items-center gap-2 w-[86px] sm:w-[108px] shrink-0">
+      <div className="h-1.5 flex-1 rounded-full bg-line overflow-hidden">
         <div
-          className={`h-1.5 rounded ${color} transition-[width] duration-500`}
+          className={`h-full rounded-full bar-fill ${barColor(value)}`}
           style={{ width: `${Math.round(value * 100)}%` }}
         />
       </div>
-      <span className="text-xs tabular-nums text-zinc-400 w-8 shrink-0">
+      <span className="tnum text-xs text-ink-2 w-8 text-right">
         {Math.round(value * 100)}%
       </span>
     </div>
   );
 }
+
+/* ------------------------------------------------------------ attributes */
 
 function AttributeRow({
   attr,
@@ -264,85 +277,83 @@ function AttributeRow({
       );
       if (res.ok) {
         onUpdated(await res.json());
-        notify(
-          "success",
-          action === "approve"
-            ? `${attr.name} approved`
-            : action === "reject"
-              ? `${attr.name} rejected`
-              : `${attr.name} updated`,
-        );
-      } else {
-        notify("error", `Couldn't update ${attr.name} — try again.`);
-      }
+        notify("ok", `${attr.name} ${action === "reject" ? "removed" : "confirmed"}`);
+      } else notify("bad", `Could not update ${attr.name}`);
     } catch {
-      notify("error", `Network error updating ${attr.name}.`);
+      notify("bad", `Network error updating ${attr.name}`);
     } finally {
       setBusy(false);
     }
   };
 
+  const label = attr.human_reviewed ? "human-verified" : attr.status;
+
   return (
-    <div className="border-b border-zinc-800 last:border-0">
+    <div className="border-b border-line last:border-0">
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="w-full flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 py-3 px-3 min-h-[44px] hover:bg-zinc-900/60 active:bg-zinc-900 text-left transition-colors"
+        className="w-full text-left px-3 sm:px-4 py-3 min-h-11 hover:bg-accent-weak/60 transition-colors grid grid-cols-[1fr_auto] sm:grid-cols-[190px_1fr_auto_auto] items-center gap-x-3 gap-y-1"
       >
-        <span className="font-mono text-sm text-zinc-300 w-full sm:w-44 sm:shrink-0 truncate order-1">
+        <span className="font-mono text-[13px] text-ink-2 truncate">
           {attr.name}
         </span>
-        <span className="text-sm text-zinc-100 flex-1 order-3 sm:order-2 min-w-0 truncate">
-          {attr.value} {attr.unit}
+        <span className="font-mono text-[13px] font-medium col-start-1 sm:col-start-2 truncate">
+          {attr.value}
+          {attr.unit ? ` ${attr.unit}` : ""}
         </span>
         <span
-          className={`text-[11px] px-2 py-0.5 rounded-full border shrink-0 order-2 sm:order-3 ${STATUS_BADGE[attr.status] ?? STATUS_BADGE.generated}`}
+          className={`justify-self-end row-start-1 col-start-2 sm:row-auto sm:col-auto text-[11px] px-2 py-0.5 rounded-full border ${stateClass(label)}`}
         >
-          {attr.human_reviewed ? "human-verified" : attr.status}
+          {label}
         </span>
-        <span className="order-4 shrink-0">
-          <ConfidenceBar value={attr.confidence} />
+        <span className="col-span-2 sm:col-auto justify-self-end">
+          <Bar value={attr.confidence} />
         </span>
       </button>
 
       {open && (
-        <div className="px-3 pb-3 space-y-2">
+        <div className="px-3 sm:px-4 pb-4 space-y-2">
           {attr.evidence.map((ev, i) => (
-            <div key={i} className="text-xs bg-zinc-900 rounded p-2 border border-zinc-800">
-              <div className="flex justify-between gap-2 flex-wrap">
+            <div key={i} className="rounded-md border border-line bg-sunken p-2.5">
+              <div className="flex justify-between gap-3 flex-wrap">
                 <a
                   href={ev.source_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sky-400 hover:underline break-all"
+                  className="text-xs text-accent hover:underline break-all"
                 >
                   {ev.source_url}
                 </a>
-                <span className="text-zinc-500 shrink-0">{ev.source_type}</span>
+                <span className="text-[11px] text-ink-3 shrink-0 track uppercase">
+                  {ev.source_type}
+                </span>
               </div>
               {ev.quote && (
-                <p className="mt-1 text-zinc-400 italic">&ldquo;{ev.quote}&rdquo;</p>
+                <p className="mt-1.5 font-mono text-xs text-ink-2">
+                  &ldquo;{ev.quote}&rdquo;
+                </p>
               )}
             </div>
           ))}
 
           {attr.conflicting_values.length > 0 && (
-            <div className="text-xs bg-red-950/40 border border-red-500/30 rounded p-2 space-y-1.5">
-              <p className="text-red-400 font-medium">
-                Conflicting values from other sources:
+            <div className="rounded-md border border-conflict/30 bg-conflict-bg p-2.5 space-y-2">
+              <p className="text-xs font-medium text-conflict">
+                Sources disagree. Pick the correct value.
               </p>
               {attr.conflicting_values.map((ev, i) => (
-                <div key={i} className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-zinc-200">
+                <div key={i} className="flex items-center justify-between gap-3 flex-wrap">
+                  <span className="font-mono text-xs">
                     {ev.raw_value}{" "}
-                    <span className="text-zinc-500">({ev.source_type})</span>
+                    <span className="text-ink-3">({ev.source_type})</span>
                   </span>
                   <button
                     disabled={busy}
                     onClick={() => review("edit", ev.raw_value, attr.unit)}
-                    className="text-sky-400 hover:underline disabled:opacity-40 min-h-[32px] px-1"
+                    className="text-xs text-accent hover:underline disabled:opacity-40 min-h-8 px-1"
                   >
-                    use this value
+                    Use this
                   </button>
                 </div>
               ))}
@@ -350,20 +361,20 @@ function AttributeRow({
           )}
 
           {!attr.human_reviewed && (
-            <div className="flex gap-2 text-xs">
+            <div className="flex gap-2 pt-0.5">
               <button
                 disabled={busy}
                 onClick={() => review("approve")}
-                className="px-3 py-1.5 rounded bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 disabled:opacity-40 min-h-[36px] transition-colors"
+                className="rounded-md border border-verified/30 bg-verified-bg text-verified px-3 py-1.5 text-xs font-medium hover:bg-verified/10 disabled:opacity-40 transition-colors min-h-8"
               >
-                {busy ? "…" : "Approve"}
+                {busy ? "Saving" : "Confirm"}
               </button>
               <button
                 disabled={busy}
                 onClick={() => review("reject")}
-                className="px-3 py-1.5 rounded bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600/30 disabled:opacity-40 min-h-[36px] transition-colors"
+                className="rounded-md border border-line bg-card px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-sunken disabled:opacity-40 transition-colors min-h-8"
               >
-                {busy ? "…" : "Reject"}
+                Remove
               </button>
             </div>
           )}
@@ -373,6 +384,8 @@ function AttributeRow({
   );
 }
 
+/* ------------------------------------------------------------------ page */
+
 export default function Home() {
   const [mpn, setMpn] = useState("HOM230CP");
   const [brand, setBrand] = useState("Square D");
@@ -380,27 +393,33 @@ export default function Home() {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [record, setRecord] = useState<ProductRecord | null>(null);
   const [running, setRunning] = useState(false);
-  const [runSlow, setRunSlow] = useState(false);
-  const [enrichError, setEnrichError] = useState("");
+  const [slow, setSlow] = useState(false);
+  const [runError, setRunError] = useState("");
 
   const [stats, setStats] = useState<Record<string, number | boolean> | null>(null);
   const [catalog, setCatalog] = useState<RecordSummary[]>([]);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [statsError, setStatsError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const [uploading, setUploading] = useState(false);
-  const [batchNote, setBatchNote] = useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [batchNote, setBatchNote] = useState<{ bad: boolean; text: string } | null>(null);
 
-  const [recordLoading, setRecordLoading] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [recordError, setRecordError] = useState("");
-  const [pendingRecordId, setPendingRecordId] = useState<string | null>(null);
 
-  const online = useOnlineStatus();
-  const { toasts, push, dismiss } = useToasts();
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const online = useOnline();
   const logRef = useRef<HTMLDivElement>(null);
   const esRef = useRef<EventSource | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
 
-  const refreshStats = useCallback(async () => {
+  const notify = useCallback((kind: Toast["kind"], text: string) => {
+    const id = Date.now() + Math.random();
+    setToasts((t) => [...t, { id, kind, text }]);
+    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
+  }, []);
+
+  const refresh = useCallback(async () => {
     try {
       const [s, r] = await Promise.all([
         fetch(`${API}/api/stats`),
@@ -408,29 +427,34 @@ export default function Home() {
       ]);
       if (s.ok) setStats(await s.json());
       if (r.ok) setCatalog(await r.json());
-      if (!s.ok && !r.ok) throw new Error("both requests failed");
-      setStatsError("");
+      if (!s.ok && !r.ok) throw new Error("unreachable");
+      setLoadError("");
     } catch {
-      setStatsError("Couldn't reach the server. It may be waking up (free-tier hosting sleeps when idle) — retry in a few seconds.");
+      setLoadError(
+        "Cannot reach the server. Free tier hosting sleeps when idle, so give it a few seconds.",
+      );
     } finally {
-      setStatsLoading(false);
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refreshStats();
-    // The catalog view is a live picture of a running batch.
-    const t = setInterval(refreshStats, 5000);
+    refresh();
+    const t = setInterval(refresh, 5000);
     return () => clearInterval(t);
-  }, [refreshStats]);
+  }, [refresh]);
 
   useEffect(() => () => esRef.current?.close(), []);
+
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
+  }, [events]);
 
   const onUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".csv")) {
-      setBatchNote({ kind: "error", text: "That doesn't look like a CSV file." });
+      setBatchNote({ bad: true, text: "That file is not a CSV." });
       e.target.value = "";
       return;
     }
@@ -443,55 +467,51 @@ export default function Home() {
       const data = await res.json();
       if (res.ok) {
         setBatchNote({
-          kind: "info",
-          text: `Enriching ${data.count} SKUs — the catalog below fills in as each finishes.`,
+          bad: false,
+          text: `Running ${data.count} SKUs. The catalog fills in as each finishes.`,
         });
-        push("success", `Batch started: ${data.count} SKUs`);
+        notify("ok", `Batch started, ${data.count} SKUs`);
       } else {
-        setBatchNote({ kind: "error", text: `Upload failed: ${data.detail ?? res.statusText}` });
+        setBatchNote({ bad: true, text: `Upload failed. ${data.detail ?? res.statusText}` });
       }
     } catch (err) {
       setBatchNote({
-        kind: "error",
-        text: err instanceof DOMException && err.name === "AbortError"
-          ? "Upload timed out — check your connection and try again."
-          : `Upload failed: ${String(err)}`,
+        bad: true,
+        text:
+          err instanceof DOMException && err.name === "AbortError"
+            ? "Upload timed out. Check your connection."
+            : "Upload failed.",
       });
     } finally {
       setUploading(false);
       e.target.value = "";
-      refreshStats();
+      refresh();
     }
   };
 
   const openRecord = async (id: string) => {
-    setRecordLoading(true);
+    setOpeningId(id);
     setRecordError("");
-    setPendingRecordId(id);
     try {
       const r = await fetchSlow(`${API}/api/records/${id}`, undefined, () => {});
       if (r.ok) {
         setRecord(await r.json());
         setEvents([]);
-      } else {
-        setRecordError("Couldn't load that record.");
-      }
+        requestAnimationFrame(() =>
+          resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+        );
+      } else setRecordError("That record could not be loaded.");
     } catch {
       setRecordError("Network error loading that record.");
     } finally {
-      setRecordLoading(false);
-      setPendingRecordId(null);
+      setOpeningId(null);
     }
   };
 
-  useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
-  }, [events]);
-
   const enrich = async () => {
     setRunning(true);
-    setRunSlow(false);
-    setEnrichError("");
+    setSlow(false);
+    setRunError("");
     setEvents([]);
     setRecord(null);
     esRef.current?.close();
@@ -505,156 +525,164 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mpn, brand, description: desc }),
         },
-        () => setRunSlow(true),
+        () => setSlow(true),
         20_000,
       );
-      if (!res.ok) throw new Error(`server returned ${res.status}`);
+      if (!res.ok) throw new Error(String(res.status));
       ({ record_id } = await res.json());
     } catch (err) {
       setRunning(false);
-      setEnrichError(
+      setRunError(
         err instanceof DOMException && err.name === "AbortError"
-          ? "Server took too long to respond. It may be waking up — try again."
-          : "Couldn't start enrichment — check your connection and try again.",
+          ? "The server took too long to respond. It may be waking up."
+          : "Could not start enrichment. Check your connection.",
       );
       return;
     }
 
     const es = new EventSource(`${API}/api/events/${record_id}`);
     esRef.current = es;
-    let finished = false;
-    const slowTimer = window.setTimeout(() => setRunSlow(true), SLOW_THRESHOLD_MS);
+    let done = false;
+    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_MS);
 
     es.onmessage = (e) => {
-      setRunSlow(false);
+      setSlow(false);
       window.clearTimeout(slowTimer);
-      const ev = JSON.parse(e.data);
-      setEvents((prev) => [...prev, ev]);
+      setEvents((prev) => [...prev, JSON.parse(e.data)]);
     };
     es.addEventListener("done", async () => {
-      finished = true;
+      done = true;
       window.clearTimeout(slowTimer);
       es.close();
       try {
         const r = await fetch(`${API}/api/records/${record_id}`);
         if (r.ok) {
           setRecord(await r.json());
-          push("success", "Enrichment complete");
+          notify("ok", "Enrichment complete");
+          requestAnimationFrame(() =>
+            resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+          );
         }
       } catch {
-        setEnrichError("Finished, but couldn't load the result. Refresh and check the catalog.");
+        setRunError("Finished, but the result could not be loaded. Check the catalog.");
       }
       setRunning(false);
-      refreshStats();
+      refresh();
     });
     es.onerror = () => {
       window.clearTimeout(slowTimer);
       es.close();
       setRunning(false);
-      if (!finished) {
-        setEnrichError("Connection to the server was lost mid-run. Check the catalog below — it may have finished anyway.");
-      }
+      if (!done)
+        setRunError(
+          "Lost connection during the run. Check the catalog, it may have finished.",
+        );
     };
   };
 
   const statCards: [string, string][] = stats
     ? [
         ["Records", String(stats.completed)],
-        ["Auto-approved", `${Math.round((stats.auto_approval_rate as number) * 100)}%`],
-        ["Avg cost/SKU", `$${stats.avg_cost_usd}`],
+        ["Auto approved", `${Math.round((stats.auto_approval_rate as number) * 100)}%`],
+        ["Avg cost", `$${stats.avg_cost_usd}`],
         ["Avg time", `${stats.avg_duration_s}s`],
-        ["Flagged attrs", String(stats.attributes_flagged_for_review)],
+        ["Flagged", String(stats.attributes_flagged_for_review)],
       ]
     : [];
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-3 sm:p-6 font-sans">
-      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
-        <header className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            SKU<span className="text-sky-400">Forge</span>
+    <>
+      <Header online={online} />
+
+      <main className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        {/* how to use, three steps, always visible so the page explains itself */}
+        <section aria-labelledby="howto">
+          <h1 id="howto" className="text-[22px] sm:text-[26px] font-semibold tracking-tight">
+            Enrich a part number into a sourced product record
           </h1>
-          <p className="text-xs sm:text-sm text-zinc-500">
-            minimal input → commerce-ready product intelligence, with proof
+          <p className="mt-1.5 text-ink-2 max-w-[68ch]">
+            Give it a manufacturer part number, a brand and one line of text. It
+            finds the datasheets, extracts the specifications, and scores every
+            value against the sources it found.
           </p>
-        </header>
-
-        <OfflineBanner online={online} />
-
-        {statsLoading ? (
-          <StatSkeleton />
-        ) : statsError ? (
-          <ErrorBanner message={statsError} onRetry={refreshStats} />
-        ) : stats ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 text-center">
-            {statCards.map(([label, value]) => (
-              <div
-                key={label}
-                className="bg-zinc-900 border border-zinc-800 rounded-lg py-3"
+          <ol className="mt-4 grid gap-2.5 sm:grid-cols-3">
+            {[
+              ["1", "Enter a part", "Type an MPN and brand, or upload a CSV to run a whole catalog."],
+              ["2", "Watch it work", "Each agent reports as it runs, including why a source was skipped."],
+              ["3", "Clear the queue", "Open any row. Confirm what is right, resolve what disagrees."],
+            ].map(([n, t, d]) => (
+              <li
+                key={n}
+                className="rounded-lg border border-line bg-card p-3.5 flex gap-3"
               >
-                <div className="text-base sm:text-lg font-semibold tabular-nums">{value}</div>
-                <div className="text-[11px] sm:text-xs text-zinc-500">{label}</div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        <section className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-            <input
-              value={mpn}
-              onChange={(e) => setMpn(e.target.value)}
-              placeholder="MPN"
-              className="bg-zinc-950 border border-zinc-700 rounded px-3 py-2.5 sm:py-2 text-sm w-full sm:w-40 min-h-[44px]"
-            />
-            <input
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="Brand"
-              className="bg-zinc-950 border border-zinc-700 rounded px-3 py-2.5 sm:py-2 text-sm w-full sm:w-40 min-h-[44px]"
-            />
-            <input
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              placeholder="One-line description"
-              onKeyDown={(e) => e.key === "Enter" && !running && mpn && brand && enrich()}
-              className="bg-zinc-950 border border-zinc-700 rounded px-3 py-2.5 sm:py-2 text-sm flex-1 min-h-[44px]"
-            />
-            <button
-              onClick={enrich}
-              disabled={running || !mpn || !brand || !online}
-              className="px-5 py-2.5 sm:py-2 rounded bg-sky-600 hover:bg-sky-500 active:bg-sky-700 disabled:opacity-40 text-sm font-medium min-h-[44px] transition-colors shrink-0"
-            >
-              {running ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white motion-safe:animate-spin" />
-                  Enriching…
+                <span className="shrink-0 w-6 h-6 rounded-full bg-accent-weak text-accent grid place-items-center text-xs font-semibold tnum">
+                  {n}
                 </span>
-              ) : (
-                "Enrich"
-              )}
-            </button>
+                <span>
+                  <span className="block font-medium text-[13px]">{t}</span>
+                  <span className="block text-[13px] text-ink-2 mt-0.5">{d}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {!online && (
+          <Notice tone="warn">
+            No internet connection. Actions will fail until it returns.
+          </Notice>
+        )}
+
+        {/* input */}
+        <section className="rounded-lg border border-line bg-card">
+          <div className="p-3.5 sm:p-4 grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)_auto]">
+            <label className="grid gap-1.5">
+              <span className="text-[11px] uppercase track text-ink-3">Part number</span>
+              <input
+                value={mpn}
+                onChange={(e) => setMpn(e.target.value)}
+                placeholder="HOM230CP"
+                className="h-10 rounded-md border border-line bg-card px-3 font-mono text-[13px] focus:border-accent transition-colors"
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-[11px] uppercase track text-ink-3">Brand</span>
+              <input
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="Square D"
+                className="h-10 rounded-md border border-line bg-card px-3 text-[13px] focus:border-accent transition-colors"
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-[11px] uppercase track text-ink-3">Description</span>
+              <input
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                placeholder="30A 2 pole breaker"
+                onKeyDown={(e) => e.key === "Enter" && !running && mpn && brand && enrich()}
+                className="h-10 rounded-md border border-line bg-card px-3 text-[13px] focus:border-accent transition-colors"
+              />
+            </label>
+            <div className="grid gap-1.5">
+              <span className="hidden sm:block text-[11px]">&nbsp;</span>
+              <button
+                onClick={enrich}
+                disabled={running || !mpn || !brand || !online}
+                className="h-10 px-5 rounded-md bg-accent text-white text-[13px] font-medium hover:bg-accent-hover active:translate-y-px disabled:opacity-40 disabled:hover:bg-accent transition-colors whitespace-nowrap"
+              >
+                {running ? "Enriching" : "Enrich"}
+              </button>
+            </div>
           </div>
 
-          {running && runSlow && (
-            <p className="text-xs text-amber-400/90 mt-2 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 motion-safe:animate-pulse" />
-              Still working — free-tier models can take 60–150s per SKU.
-            </p>
-          )}
-          {enrichError && (
-            <div className="mt-2.5">
-              <ErrorBanner message={enrichError} onRetry={enrich} />
-            </div>
-          )}
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 mt-3 pt-3 border-t border-zinc-800">
-            <span className="text-xs text-zinc-500">
-              Or enrich a whole catalog — CSV with columns{" "}
-              <code className="text-zinc-400">mpn,brand,description</code>
+          <div className="border-t border-line px-3.5 sm:px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-ink-3">
+            <span>
+              Or run a catalog. CSV columns{" "}
+              <code className="font-mono text-ink-2">mpn,brand,description</code>
             </span>
-            <label className="sm:ml-auto text-xs px-3 py-2 sm:py-1.5 rounded border border-zinc-700 hover:bg-zinc-800 cursor-pointer min-h-[36px] flex items-center justify-center w-full sm:w-auto transition-colors">
-              {uploading ? "Uploading…" : "Upload CSV"}
+            <label className="sm:ml-auto rounded-md border border-line bg-card px-3 py-1.5 text-[13px] text-ink-2 hover:bg-sunken cursor-pointer transition-colors min-h-8 inline-flex items-center">
+              {uploading ? "Uploading" : "Upload CSV"}
               <input
                 type="file"
                 accept=".csv"
@@ -664,154 +692,180 @@ export default function Home() {
               />
             </label>
           </div>
-          {batchNote && (
-            <p className={`text-xs mt-2 ${batchNote.kind === "error" ? "text-red-400" : "text-zinc-400"}`}>
-              {batchNote.text}
-            </p>
-          )}
+
+          {(slow && running) || runError || batchNote ? (
+            <div className="border-t border-line px-3.5 sm:px-4 py-3 space-y-2.5">
+              {running && slow && (
+                <p className="text-[13px] text-single flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-single skeleton" />
+                  Still working. Free tier models take 60 to 150 s per SKU.
+                </p>
+              )}
+              {runError && <Notice onRetry={enrich}>{runError}</Notice>}
+              {batchNote && (
+                <p className={`text-[13px] ${batchNote.bad ? "text-conflict" : "text-ink-2"}`}>
+                  {batchNote.text}
+                </p>
+              )}
+            </div>
+          ) : null}
         </section>
 
+        {/* agent theatre */}
         {events.length > 0 && (
-          <section className="bg-zinc-900 border border-zinc-800 rounded-lg">
-            <h2 className="text-sm font-medium text-zinc-400 px-4 pt-3">
-              Agent pipeline
+          <section className="rounded-lg border border-line bg-card overflow-hidden">
+            <h2 className="text-[11px] uppercase track text-ink-3 px-4 py-2.5 bg-sunken border-b border-line">
+              Pipeline
             </h2>
-            <div
-              ref={logRef}
-              className="p-4 pt-2 max-h-52 overflow-y-auto font-mono text-xs space-y-1"
-            >
+            <div ref={logRef} className="p-3 sm:p-4 max-h-52 overflow-y-auto font-mono text-xs space-y-1.5">
               {events.map((e, i) => (
-                <div key={i} className="flex gap-2">
-                  <span className={`w-24 shrink-0 ${AGENT_COLORS[e.agent] ?? ""}`}>
-                    [{e.agent}]
+                <div key={i} className="flex gap-2.5">
+                  <span className={`w-[86px] shrink-0 ${AGENT_TONE[e.agent] ?? "text-ink-3"}`}>
+                    {e.agent}
                   </span>
-                  <span className="text-zinc-300 break-words">{e.step}</span>
+                  <span className="text-ink-2 break-words">{e.step}</span>
                 </div>
               ))}
-              {running && <div className="text-zinc-500 motion-safe:animate-pulse">▌</div>}
+              {running && <div className="text-ink-3 skeleton w-2 h-3.5 inline-block" />}
             </div>
           </section>
         )}
 
-        {statsLoading ? (
-          <section className="bg-zinc-900 border border-zinc-800 rounded-lg">
-            <div className="px-4 py-3 border-b border-zinc-800">
-              <div className="h-4 w-40 bg-zinc-800 rounded motion-safe:animate-pulse" />
-            </div>
-            <RowSkeleton />
-          </section>
+        {/* stats */}
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-line bg-card p-3">
+                <div className="skeleton h-5 w-14 rounded" />
+                <div className="skeleton h-3 w-20 rounded mt-2" />
+              </div>
+            ))}
+          </div>
+        ) : loadError ? (
+          <Notice onRetry={refresh}>{loadError}</Notice>
+        ) : stats ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            {statCards.map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-line bg-card px-3.5 py-3">
+                <div className="tnum text-lg font-semibold">{value}</div>
+                <div className="text-[11px] uppercase track text-ink-3 mt-0.5">{label}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {/* catalog */}
+        {loading ? (
+          <div className="rounded-lg border border-line bg-card p-4 space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="skeleton h-9 rounded" />
+            ))}
+          </div>
         ) : catalog.length > 0 ? (
-          <section className="bg-zinc-900 border border-zinc-800 rounded-lg">
-            <h2 className="text-sm font-medium text-zinc-400 px-4 py-3 border-b border-zinc-800">
-              Catalog — {catalog.length} enriched SKU{catalog.length === 1 ? "" : "s"}
-              <span className="text-zinc-600 font-normal hidden sm:inline">
-                {" "}· tap any row to inspect its evidence
+          <section className="rounded-lg border border-line bg-card overflow-hidden">
+            <h2 className="flex items-baseline gap-2 text-[11px] uppercase track text-ink-3 px-4 py-2.5 bg-sunken border-b border-line">
+              Catalog
+              <span className="tnum normal-case tracking-normal text-ink-2">
+                {catalog.length} records
               </span>
             </h2>
 
-            {/* Mobile: card list. Desktop: table. Same data, different density. */}
-            <div className="max-h-80 overflow-y-auto divide-y divide-zinc-800/70 sm:hidden">
+            {/* mobile: stacked rows. tablet and up: table. */}
+            <div className="sm:hidden divide-y divide-line max-h-[420px] overflow-y-auto">
               {catalog.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => openRecord(r.id)}
-                  disabled={recordLoading}
-                  className="w-full text-left px-4 py-3 min-h-[44px] hover:bg-zinc-800/40 active:bg-zinc-800 transition-colors disabled:opacity-60"
+                  disabled={openingId !== null}
+                  className="w-full text-left px-4 py-3 min-h-11 hover:bg-accent-weak/60 active:bg-accent-weak transition-colors disabled:opacity-60"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-sm text-zinc-200">{r.mpn}</span>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full border shrink-0 ${statusBadgeClass(r.status)}`}>
-                      {pendingRecordId === r.id ? "loading…" : r.status}
+                    <span className="font-mono text-[13px] font-medium">{r.mpn}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full border shrink-0 ${recordStateClass(r.status)}`}>
+                      {openingId === r.id ? "opening" : r.status}
                     </span>
                   </div>
-                  <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <div className="text-xs text-ink-3 mt-1 flex flex-wrap gap-x-2">
                     <span>{r.brand}</span>
-                    <span>·</span>
-                    <span>{r.category || "uncategorized"}</span>
-                    <span>·</span>
-                    <span>{r.attribute_count} attrs</span>
+                    <span>{r.category || "uncategorised"}</span>
+                    <span className="tnum">{r.attribute_count} attrs</span>
                     {r.conflict_count > 0 && (
-                      <span className="text-red-400">· {r.conflict_count} conflict</span>
+                      <span className="text-conflict tnum">{r.conflict_count} conflict</span>
                     )}
                   </div>
                 </button>
               ))}
             </div>
 
-            <div className="hidden sm:block max-h-72 overflow-y-auto">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[560px]">
-                  <tbody>
-                    {catalog.map((r) => (
-                      <tr
-                        key={r.id}
-                        onClick={() => openRecord(r.id)}
-                        className="border-b border-zinc-800/70 last:border-0 hover:bg-zinc-800/40 cursor-pointer transition-colors"
-                      >
-                        <td className="px-4 py-2.5 font-mono text-zinc-300 w-36">
-                          {r.mpn}
-                        </td>
-                        <td className="py-2.5 text-zinc-400 w-28">{r.brand}</td>
-                        <td className="py-2.5 text-zinc-500 w-40">{r.category || "—"}</td>
-                        <td className="py-2.5 text-zinc-300 w-20 tabular-nums">
-                          {r.attribute_count} attrs
-                        </td>
-                        <td className="py-2.5 w-24">
-                          {r.conflict_count > 0 ? (
-                            <span className="text-red-400">
-                              {r.conflict_count} conflict
-                            </span>
-                          ) : (
-                            <span className="text-zinc-600">clean</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 pr-4 text-right">
-                          <span className={`text-[11px] px-2 py-0.5 rounded-full border ${statusBadgeClass(r.status)}`}>
-                            {pendingRecordId === r.id ? "loading…" : r.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="hidden sm:block max-h-[420px] overflow-y-auto">
+              <table className="w-full text-[13px]">
+                <thead className="sr-only">
+                  <tr>
+                    <th>Part</th><th>Brand</th><th>Category</th>
+                    <th>Attributes</th><th>Conflicts</th><th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {catalog.map((r) => (
+                    <tr
+                      key={r.id}
+                      onClick={() => openRecord(r.id)}
+                      className="border-b border-line last:border-0 hover:bg-accent-weak/60 cursor-pointer transition-colors"
+                    >
+                      <td className="px-4 py-2.5 font-mono font-medium w-[150px]">{r.mpn}</td>
+                      <td className="py-2.5 text-ink-2 w-[120px]">{r.brand}</td>
+                      <td className="py-2.5 text-ink-3 w-[160px]">{r.category || "—"}</td>
+                      <td className="py-2.5 tnum text-ink-2 w-[90px]">{r.attribute_count} attrs</td>
+                      <td className="py-2.5 w-[110px]">
+                        {r.conflict_count > 0 ? (
+                          <span className="text-conflict tnum">{r.conflict_count} conflict</span>
+                        ) : (
+                          <span className="text-ink-3">clean</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right">
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${recordStateClass(r.status)}`}>
+                          {openingId === r.id ? "opening" : r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
         ) : (
-          <section className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-8 text-center">
-            <p className="text-sm text-zinc-500">
-              No enriched SKUs yet — run one above, or upload a CSV to build a catalog.
+          <section className="rounded-lg border border-line bg-card px-6 py-10 text-center">
+            <p className="font-medium">No records yet</p>
+            <p className="text-ink-2 text-[13px] mt-1 max-w-[46ch] mx-auto">
+              Run the part above to see how a record is built, or upload a CSV to
+              enrich a whole catalog at once.
             </p>
           </section>
         )}
 
         {recordError && (
-          <ErrorBanner message={recordError} onRetry={() => pendingRecordId && openRecord(pendingRecordId)} />
+          <Notice onRetry={() => openingId && openRecord(openingId)}>{recordError}</Notice>
         )}
 
-        {recordLoading && (
-          <section className="bg-zinc-900 border border-zinc-800 rounded-lg">
-            <RowSkeleton />
-          </section>
-        )}
-
-        {record && !recordLoading && (
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between gap-2 flex-wrap">
-                <h2 className="text-sm font-medium text-zinc-400">
-                  Attributes — {record.category}{" "}
-                  <span className="text-zinc-600">
-                    ({Math.round(record.category_confidence * 100)}%)
+        {/* record */}
+        {record && (
+          <section ref={resultRef} className="grid gap-4 lg:grid-cols-[1.55fr_1fr] scroll-mt-20">
+            <div className="rounded-lg border border-line bg-card overflow-hidden">
+              <div className="flex items-center justify-between gap-2 flex-wrap px-4 py-2.5 bg-sunken border-b border-line">
+                <h2 className="text-[11px] uppercase track text-ink-3">
+                  Attributes
+                  <span className="normal-case tracking-normal text-ink-2 ml-2">
+                    {record.category} · {Math.round(record.category_confidence * 100)}% match
                   </span>
                 </h2>
-                <span className={`text-[11px] px-2 py-0.5 rounded-full border ${statusBadgeClass(record.status)}`}>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full border ${recordStateClass(record.status)}`}>
                   {record.status}
                 </span>
               </div>
               {record.attributes.length === 0 ? (
-                <p className="text-sm text-zinc-500 px-4 py-6 text-center">
-                  No attributes extracted — every source may have been blocked or unreachable.
+                <p className="px-4 py-8 text-center text-[13px] text-ink-2">
+                  No attributes extracted. Every source was blocked or unreachable.
                 </p>
               ) : (
                 record.attributes.map((a) => (
@@ -820,72 +874,101 @@ export default function Home() {
                     attr={a}
                     recordId={record.id}
                     onUpdated={setRecord}
-                    notify={push}
+                    notify={notify}
                   />
                 ))
               )}
             </div>
 
-            <div className="space-y-4 min-w-0">
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-2">
-                <h3 className="text-xs text-zinc-500 uppercase tracking-wide">
-                  Commerce copy
+            <div className="grid gap-4 content-start min-w-0">
+              <div className="rounded-lg border border-line bg-card overflow-hidden">
+                <h3 className="text-[11px] uppercase track text-ink-3 px-4 py-2.5 bg-sunken border-b border-line">
+                  Generated copy
                 </h3>
-                <p className="text-sm font-medium">{record.seo_title || "—"}</p>
-                <p className="text-xs text-zinc-400">{record.short_description}</p>
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {record.search_synonyms.map((s) => (
-                    <span
-                      key={s}
-                      className="text-[11px] bg-zinc-800 rounded-full px-2 py-0.5 text-zinc-400"
-                    >
-                      {s}
-                    </span>
-                  ))}
+                <div className="p-4 space-y-2">
+                  <p className="font-medium text-[13px]">{record.seo_title || "—"}</p>
+                  <p className="text-[13px] text-ink-2">{record.short_description}</p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {record.search_synonyms.map((s) => (
+                      <span
+                        key={s}
+                        className="text-[11px] bg-sunken border border-line rounded-full px-2 py-0.5 text-ink-2"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-2 min-w-0">
-                <h3 className="text-xs text-zinc-500 uppercase tracking-wide">
-                  Sources ({record.sources.length})
+              <div className="rounded-lg border border-line bg-card overflow-hidden min-w-0">
+                <h3 className="text-[11px] uppercase track text-ink-3 px-4 py-2.5 bg-sunken border-b border-line">
+                  Sources
+                  <span className="tnum normal-case tracking-normal text-ink-2 ml-2">
+                    {record.sources.length}
+                  </span>
                 </h3>
-                {record.sources.map((s) => (
+                <div className="p-4 space-y-2 min-w-0">
+                  {record.sources.map((s) => (
+                    <a
+                      key={s.url}
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block text-xs text-accent hover:underline truncate"
+                    >
+                      {s.title || s.url}
+                    </a>
+                  ))}
+                  {record.certifications.length > 0 && (
+                    <p className="text-xs text-ink-2 pt-1 break-words">
+                      Certifications: {record.certifications.join(", ")}
+                    </p>
+                  )}
+                  {record.equivalent_mpns.length > 0 && (
+                    <p className="text-xs text-ink-2 break-words">
+                      Equivalents: {record.equivalent_mpns.join(", ")}
+                    </p>
+                  )}
+                  <p className="tnum text-xs text-ink-3 pt-1 border-t border-line mt-2">
+                    ${record.cost_usd.toFixed(4)} · {record.duration_s}s
+                  </p>
                   <a
-                    key={s.url}
-                    href={s.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block text-xs text-sky-400 hover:underline truncate"
+                    href={`${API}/api/export/${record.id}.csv`}
+                    className="inline-flex items-center min-h-8 text-xs text-accent hover:underline"
                   >
-                    [{s.source_type}] {s.title || s.url}
+                    Export CSV
                   </a>
-                ))}
-                {record.certifications.length > 0 && (
-                  <p className="text-xs text-zinc-400 pt-1 break-words">
-                    Certs: {record.certifications.join(", ")}
-                  </p>
-                )}
-                {record.equivalent_mpns.length > 0 && (
-                  <p className="text-xs text-zinc-400 break-words">
-                    Equivalents: {record.equivalent_mpns.join(", ")}
-                  </p>
-                )}
-                <p className="text-xs text-zinc-500 pt-1 tabular-nums">
-                  ${record.cost_usd.toFixed(4)} · {record.duration_s}s
-                </p>
-                <a
-                  href={`${API}/api/export/${record.id}.csv`}
-                  className="inline-block text-xs text-sky-400 hover:underline pt-1 min-h-[32px] leading-[32px]"
-                >
-                  Export CSV →
-                </a>
+                </div>
               </div>
             </div>
           </section>
         )}
-      </div>
+      </main>
 
-      <ToastStack toasts={toasts} dismiss={dismiss} />
-    </main>
+      <Footer />
+
+      {toasts.length > 0 && (
+        <div
+          className="fixed bottom-3 left-1/2 -translate-x-1/2 sm:left-auto sm:right-5 sm:translate-x-0 z-50 flex flex-col gap-2 w-[calc(100%-1.5rem)] max-w-xs"
+          role="status"
+          aria-live="polite"
+        >
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}
+              className={`toast-in cursor-pointer rounded-lg border px-3.5 py-2.5 text-[13px] shadow-[0_6px_24px_-8px_rgb(0_0_0/0.25)] ${
+                t.kind === "ok"
+                  ? "bg-verified-bg border-verified/30 text-verified"
+                  : "bg-conflict-bg border-conflict/30 text-conflict"
+              }`}
+            >
+              {t.text}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

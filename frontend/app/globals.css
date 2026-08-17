@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
+/* SKUForge design tokens. See DESIGN.md.
+   Instrument, not dashboard: tinted neutrals, one accent, colour reserved for
+   state. Light only, deliberately: this surface is read in daylight for hours,
+   and a dark ground here would be a category reflex borrowed from dev tooling. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: oklch(99% 0.003 250);
+  --card: oklch(100% 0.002 250);
+  --sunken: oklch(97.2% 0.005 250);
+  --line: oklch(91% 0.008 250);
+  --line-strong: oklch(84% 0.012 250);
+
+  --ink: oklch(24% 0.02 260);
+  --ink-2: oklch(45% 0.015 258);
+  --ink-3: oklch(60% 0.012 256);
+
+  --accent: oklch(48% 0.14 255);
+  --accent-hover: oklch(43% 0.15 255);
+  --accent-weak: oklch(95% 0.03 255);
+
+  --verified: oklch(43% 0.11 155);
+  --verified-bg: oklch(96% 0.03 155);
+  --single: oklch(48% 0.1 75);
+  --single-bg: oklch(96.5% 0.035 75);
+  --conflict: oklch(48% 0.15 25);
+  --conflict-bg: oklch(96% 0.035 25);
+
+  --t-xs: 0.6875rem;
+  --t-sm: 0.8125rem;
+  --t-base: 0.875rem;
+  --t-md: 1rem;
+  --t-lg: 1.25rem;
+  --t-xl: 1.5rem;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-weak: var(--accent-weak);
+  --color-verified: var(--verified);
+  --color-verified-bg: var(--verified-bg);
+  --color-single: var(--single);
+  --color-single-bg: var(--single-bg);
+  --color-conflict: var(--conflict);
+  --color-conflict-bg: var(--conflict-bg);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--t-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus is never removed, only made deliberate. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Figures that sit in a column must line up. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  letter-spacing: 0.06em;
+}
+
+@keyframes bar-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.bar-fill {
+  transform-origin: left;
+  animation: bar-in 500ms var(--ease) both;
+}
+
+.toast-in {
+  animation: toast-in 180ms var(--ease) both;
+}
+
+.skeleton {
+  background: var(--sunken);
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
