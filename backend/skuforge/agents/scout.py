@@ -62,13 +62,14 @@ def run(sku: SKUInput, fixture_key: str | None = None) -> tuple[list[Source], fl
         f"MPN: {sku.mpn}\nBrand: {sku.brand}\nDescription: {sku.description}\n\n"
         f"Search for: PDF datasheets and specification sheets, the official "
         f"{sku.brand} product page, and distributor listings.\n\n"
-        f"IMPORTANT — prioritise **direct links to PDF files** (URLs ending in "
-        f".pdf), especially spec sheets hosted on content-delivery domains such "
-        f"as assets.*, images.*, cdn.*, download.*, or documents.*. These carry "
-        f"the densest attribute data and remain reachable to automated clients, "
-        f"whereas retailer and manufacturer HTML pages frequently block them. "
-        f"Include at least three direct PDF links if they exist. "
-        f"List every distinct URL you find with its page title.",
+        f"Report ONLY URLs that actually appear in your search results. Never "
+        f"construct, guess, or pattern-match a URL that looks like it should "
+        f"exist — a fabricated link is worse than a missing one, because it "
+        f"costs a fetch and returns nothing.\n\n"
+        f"Among the real results, spec-sheet PDFs are the most valuable: they "
+        f"carry the densest attribute data and stay reachable to automated "
+        f"clients, while retailer and manufacturer HTML pages often block them. "
+        f"List every distinct URL you found, with its page title.",
         fixture_key=fixture_key,
     )
 
@@ -121,11 +122,11 @@ def run_datasheet_fallback(
         "scout",
         f"Find the technical specification sheet or product datasheet PDF for "
         f"{sku.brand} {sku.mpn} ({sku.description}).\n\n"
-        f"Return ONLY direct links to PDF documents — URLs ending in .pdf. "
-        f"Look on manufacturer document servers and distributor asset CDNs "
-        f"(hosts like assets.*, images.*, cdn.*, documents.*, download.*, "
-        f"media.*). Do not return HTML product or category pages. "
-        f"Give every distinct PDF URL you can find.",
+        f"Return direct links to PDF documents that appear in your search "
+        f"results — manufacturer document servers and distributor asset CDNs "
+        f"are the usual hosts. Prefer documents over HTML product pages.\n\n"
+        f"Only report URLs you actually found. Do not invent a plausible-looking "
+        f"document path: a guessed link simply 404s and wastes the lookup.",
         fixture_key=fixture_key,
     )
     classify = llm.call_structured(
