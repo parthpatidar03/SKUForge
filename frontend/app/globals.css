@@ -37,6 +37,30 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Dark mode — deep, blue‑tinted surfaces with muted state colours. */
+.dark {
+  --paper: oklch(14% 0.012 260);
+  --card: oklch(18% 0.015 258);
+  --sunken: oklch(12% 0.01 262);
+  --line: oklch(26% 0.015 258);
+  --line-strong: oklch(34% 0.018 256);
+
+  --ink: oklch(92% 0.008 250);
+  --ink-2: oklch(72% 0.01 252);
+  --ink-3: oklch(54% 0.012 254);
+
+  --accent: oklch(62% 0.16 255);
+  --accent-hover: oklch(68% 0.17 255);
+  --accent-weak: oklch(22% 0.04 255);
+
+  --verified: oklch(62% 0.12 155);
+  --verified-bg: oklch(20% 0.04 155);
+  --single: oklch(62% 0.1 75);
+  --single-bg: oklch(20% 0.04 75);
+  --conflict: oklch(62% 0.15 25);
+  --conflict-bg: oklch(20% 0.04 25);
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-card: var(--card);
@@ -72,6 +96,7 @@ body {
   font-size: var(--t-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 350ms var(--ease), color 350ms var(--ease);
 }
 
 /* Focus is never removed, only made deliberate. */
@@ -79,6 +104,15 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 3px;
+}
+
+/* Smooth theme transitions for all surfaces. */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 350ms;
+  transition-timing-function: var(--ease);
 }
 
 /* Figures that sit in a column must line up. */

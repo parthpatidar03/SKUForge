@@ -2,6 +2,7 @@
 
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ThemeToggle from "./ThemeToggle";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 // Free tier model calls run 60 to 150 s. Below this we stay quiet; above it we
@@ -138,6 +139,7 @@ function Header({ online }: { online: boolean }) {
           >
             Source
           </a>
+          <ThemeToggle />
         </div>
       </div>
     </header>
