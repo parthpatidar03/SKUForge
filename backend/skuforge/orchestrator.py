@@ -18,6 +18,48 @@ def _fixture_key(sku: SKUInput) -> str:
     return sku.mpn.replace("/", "_").replace(" ", "_").upper()
 
 
+def _screen_sources(sources: list, ev: Callable[..., None]) -> list:
+    """Keep the best MAX_SOURCES_PER_SKU candidates that actually fetch.
+
+    Runs before extraction so model calls are spent only on sources that
+    returned content. In mock mode there is nothing to fetch, so the ranked
+    candidates pass straight through.
+    """
+    if config.MOCK_MODE:
+        return sources[: config.MAX_SOURCES_PER_SKU]
+
+    from . import cache
+
+    readable, checked = [], 0
+    workers = max(1, min(len(sources), config.MAX_PARALLEL_EXTRACTIONS))
+    ev("scout", f"Checking {len(sources)} candidate sources are readable")
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(cache.fetch, s.url): s for s in sources}
+        outcomes: dict[str, bool] = {}
+        for future in as_completed(futures):
+            src = futures[future]
+            try:
+                outcomes[src.url] = future.result() is not None
+            except Exception:
+                outcomes[src.url] = False
+
+    # Replay in ranked order so the kept set stays deterministic.
+    for src in sources:
+        checked += 1
+        if outcomes.get(src.url):
+            readable.append(src)
+            if len(readable) >= config.MAX_SOURCES_PER_SKU:
+                break
+        else:
+            ev("scout", f"Unreadable — {cache.last_failure(src.url)}", url=src.url)
+
+    ev("scout",
+       f"{len(readable)} of {checked} candidates readable"
+       + ("" if readable else " — nothing to extract from"))
+    return readable
+
+
 def run_sku(
     sku: SKUInput,
     emit: Optional[EventSink] = None,
@@ -53,13 +95,26 @@ def run_sku(
         ev("classifier", f"Category: {template['label']} ({cat_conf:.0%})",
            category=category)
 
+        # Screen candidates by fetching first. Fetching is plain HTTP and
+        # cached; extraction is a model call. Search routinely returns dead doc
+        # references and bot-protected retailers, so paying for extraction on
+        # candidates that never returned content wastes the run's quota — and
+        # if the few we picked all failed, produced no attributes at all.
+        sources = _screen_sources(sources, ev)
+        record.sources = sources
+        if not sources:
+            raise RuntimeError(
+                "no source could be fetched — every candidate was blocked, "
+                "missing, or unreachable"
+            )
+
         # Sources are independent — extract them concurrently. This is the
         # single biggest lever on per-SKU latency (each source is a network
         # fetch plus a model call), and it is what makes catalog-scale runs
         # practical.
         workers = max(1, min(len(sources), config.MAX_PARALLEL_EXTRACTIONS))
         ev("extractor",
-           f"Extracting from {len(sources)} sources ({workers} at a time)")
+           f"Extracting from {len(sources)} readable sources ({workers} at a time)")
         results: dict[str, tuple] = {}
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {

@@ -98,4 +98,7 @@ def run(sku: SKUInput, fixture_key: str | None = None) -> tuple[list[Source], fl
             -config.SOURCE_TRUST.get(s.source_type.value, 0),  # then trust tier
         )
     )
-    return sources[: config.MAX_SOURCES_PER_SKU], search.cost_usd + classify.cost_usd
+    return (
+        sources[: config.MAX_SOURCE_CANDIDATES],
+        search.cost_usd + classify.cost_usd,
+    )

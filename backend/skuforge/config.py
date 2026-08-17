@@ -27,8 +27,16 @@ else:
     ACTIVE_KEY = API_KEYS.get(PROVIDER, "")
 MOCK_MODE = os.getenv("SKUFORGE_MOCK", "0") == "1" or not ACTIVE_KEY
 
-CACHE_DIR = BACKEND_DIR / "cache"
-DB_PATH = BACKEND_DIR / "skuforge.db"
+# Container filesystems are ephemeral — Railway wipes the image filesystem on
+# every deploy and restart, which silently emptied the demo catalog mid-run.
+# SKUFORGE_DATA_DIR points these at a mounted volume in production; locally it
+# is unset and everything stays beside the code as before.
+DATA_DIR = Path(os.getenv("SKUFORGE_DATA_DIR") or BACKEND_DIR)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+CACHE_DIR = DATA_DIR / "cache"
+DB_PATH = DATA_DIR / "skuforge.db"
+# Fixtures ship with the code and are read-only, so they stay in the repo.
 FIXTURES_DIR = BACKEND_DIR / "fixtures"
 
 # Model routing per stage, per provider (see PLAN.md §4).
@@ -120,7 +128,14 @@ SOURCE_TRUST = {
     "other": 0.4,
 }
 
+# How many sources we aim to EXTRACT from (each costs a model call).
 MAX_SOURCES_PER_SKU = 5
+# How many candidates scout may return. Fetching is cheap (plain HTTP, cached)
+# while extraction is not, so we cast a wide net and pay for extraction only on
+# candidates that actually returned content. Without the wider pool a run whose
+# top few links happen to 403 or 404 — routine, since search surfaces dead doc
+# refs and bot-protected retailers — produces no attributes at all.
+MAX_SOURCE_CANDIDATES = 12
 FETCH_TIMEOUT_S = 20
 
 # Free tiers cap requests per minute, so fanning out extraction too wide just

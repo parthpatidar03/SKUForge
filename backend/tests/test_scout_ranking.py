@@ -78,3 +78,26 @@ def test_top_n_keeps_at_least_one_readable_source():
     )
     top = _rank(blocked + [pdf])[: config.MAX_SOURCES_PER_SKU]
     assert any(s.is_pdf for s in top), "readable PDF was crowded out of the cut"
+
+
+def test_candidate_pool_is_wider_than_extraction_budget():
+    """Scout returns a wide pool; only readable ones get extracted.
+
+    Search routinely surfaces dead doc references and bot-protected retailers,
+    so a pool the same size as the extraction budget means one unlucky run
+    yields nothing. Fetch-screening picks the survivors.
+    """
+    assert config.MAX_SOURCE_CANDIDATES > config.MAX_SOURCES_PER_SKU
+
+
+def test_screening_passes_through_in_mock_mode():
+    """Mock replays have nothing to fetch; the ranked candidates stand."""
+    from skuforge.orchestrator import _screen_sources
+
+    cands = [
+        Source(url=f"https://example.com/{i}.pdf", title=str(i),
+               source_type="distributor", is_pdf=True)
+        for i in range(config.MAX_SOURCE_CANDIDATES)
+    ]
+    kept = _screen_sources(cands, lambda *a, **k: None)
+    assert len(kept) == config.MAX_SOURCES_PER_SKU
