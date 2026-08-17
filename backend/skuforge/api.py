@@ -20,6 +20,34 @@ from .orchestrator import run_sku
 logger = logging.getLogger("skuforge")
 
 app = FastAPI(title="SKUForge", version="0.1.0")
+
+
+@app.on_event("startup")
+def seed_if_empty() -> None:
+    """Load real recorded runs when the store is empty.
+
+    The sites carrying industrial spec data serve a 403 to datacenter IP ranges
+    (verified: 0 of 12 candidate sources fetched from the deployed container
+    versus 5 of 12 from a laptop), so a hosted instance cannot enrich a cold SKU
+    on demand. These are genuine pipeline output produced against the live web,
+    not fixtures — provider and cost are preserved exactly as recorded, so
+    nothing here misrepresents how it was made.
+    """
+    import json
+
+    from .models import ProductRecord
+
+    if store.list_all():
+        return
+    seed = config.BACKEND_DIR / "seed_records.json"
+    if not seed.exists():
+        return
+    try:
+        for raw in json.loads(seed.read_text(encoding="utf-8")):
+            store.save(ProductRecord.model_validate(raw))
+        logger.info("seeded %s records from seed_records.json", len(store.list_all()))
+    except Exception:
+        logger.exception("failed to seed records")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

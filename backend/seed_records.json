@@ -1,0 +1,878 @@
+[
+  {
+    "id": "801ae80bcd82",
+    "input": {
+      "mpn": "1451-2W",
+      "brand": "Leviton",
+      "description": "15A single pole switch white"
+    },
+    "category": "switch",
+    "category_confidence": 0.99,
+    "seo_title": "Leviton 1451-2W 15A Single-Pole 120VAC White Switch",
+    "short_description": "15A single pole switch in white, featuring Quickwire Push-In & Side wiring and 120 VAC operation.",
+    "long_description": "The Leviton 1451-2W is a robust 15A single-pole switch, designed for reliable operation in commercial and industrial settings. This 120 VAC wiring device features both Quickwire Push-In and traditional side wiring terminals, facilitating efficient installation. Constructed from durable thermoplastic in a clean white finish, this 1-pole switch is built to last. It is UL and CSA certified, ensuring compliance with industry safety standards, and proudly manufactured in the USA, backed by a 2-Year Limited warranty.",
+    "attributes": [
+      {
+        "name": "amperage_rating",
+        "value": "15",
+        "unit": "A",
+        "confidence": 1.0,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "15",
+            "quote": "15 Amp"
+          },
+          {
+            "source_url": "https://www.zoro.com/leviton-15-amps-single-pole-toggle-ac-quiet-switch-white-1-pk-01451-02w/i/G205302715/",
+            "source_type": "distributor",
+            "raw_value": "15",
+            "quote": "15 amps"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": true
+      },
+      {
+        "name": "color",
+        "value": "White",
+        "unit": "",
+        "confidence": 1.0,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "White",
+            "quote": "Color : White"
+          },
+          {
+            "source_url": "https://www.zoro.com/leviton-15-amps-single-pole-toggle-ac-quiet-switch-white-1-pk-01451-02w/i/G205302715/",
+            "source_type": "distributor",
+            "raw_value": "White",
+            "quote": "White"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": true
+      },
+      {
+        "name": "country_of_origin",
+        "value": "USA",
+        "unit": "",
+        "confidence": 1.0,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "USA",
+            "quote": "Made in USA"
+          },
+          {
+            "source_url": "https://www.zoro.com/leviton-15-amps-single-pole-toggle-ac-quiet-switch-white-1-pk-01451-02w/i/G205302715/",
+            "source_type": "distributor",
+            "raw_value": "United States",
+            "quote": "Country of Origin United States"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "wiring_type",
+        "value": "Quickwire Push-In & Side",
+        "unit": "",
+        "confidence": 1.0,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "Quickwire Push-In & Side",
+            "quote": "Termination : Quickwire Push-In & Side"
+          },
+          {
+            "source_url": "https://www.zoro.com/leviton-15-amps-single-pole-toggle-ac-quiet-switch-white-1-pk-01451-02w/i/G205302715/",
+            "source_type": "distributor",
+            "raw_value": "Quick wire push-in and side",
+            "quote": "Quick wire push-in and side wired"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "material",
+        "value": "Thermoplastic",
+        "unit": "",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "Thermoplastic",
+            "quote": "Actuator Material : Thermoplastic"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "number_of_gangs",
+        "value": "1",
+        "unit": "pole",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "1",
+            "quote": "Pole : 1"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "voltage_rating",
+        "value": "120",
+        "unit": "VAC",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "120",
+            "quote": "120 VAC"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "warranty",
+        "value": "2-Year Limited",
+        "unit": "",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "2-Year Limited",
+            "quote": "Warranty : 2-Year Limited"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "switch_type",
+        "value": "Toggle Switch",
+        "unit": "",
+        "confidence": 1.0,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://www.leviton.com/en/products/1451-2w",
+            "source_type": "manufacturer",
+            "raw_value": "Toggle Switch",
+            "quote": "Type : Toggle Switch"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": true
+      }
+    ],
+    "search_synonyms": [
+      "Leviton switch",
+      "15 amp switch",
+      "single pole switch",
+      "white light switch",
+      "quickwire switch",
+      "120V switch",
+      "wiring device",
+      "toggle switch",
+      "wall switch"
+    ],
+    "certifications": [
+      "UL",
+      "CSA"
+    ],
+    "image_urls": [],
+    "datasheet_urls": [
+      "https://www.leviton.com/assets/PDS/1451-2W.pdf",
+      "https://therc.com/documents/SpecificationSheet_55636002_SpecificationSheet.pdf"
+    ],
+    "equivalent_mpns": [
+      "1451-2",
+      "1451-2T"
+    ],
+    "sources": [
+      {
+        "url": "https://www.leviton.com/assets/PDS/1451-2W.pdf",
+        "title": "1451-2W (Direct PDF from Leviton)",
+        "source_type": "manufacturer",
+        "is_pdf": true,
+        "fetched_at": null
+      },
+      {
+        "url": "https://www.leviton.com/en/products/1451-2w",
+        "title": "1451-2W | Products - Leviton",
+        "source_type": "manufacturer",
+        "is_pdf": false,
+        "fetched_at": null
+      },
+      {
+        "url": "https://therc.com/documents/SpecificationSheet_55636002_SpecificationSheet.pdf",
+        "title": "Specification Sheet (via The Reynolds Company)",
+        "source_type": "distributor",
+        "is_pdf": true,
+        "fetched_at": null
+      },
+      {
+        "url": "https://therc.com/product/leviton-1451-2w",
+        "title": "Leviton\n 1451-2W | The Reynolds Company",
+        "source_type": "distributor",
+        "is_pdf": false,
+        "fetched_at": null
+      },
+      {
+        "url": "https://www.zoro.com/leviton-15-amps-single-pole-toggle-ac-quiet-switch-white-1-pk-01451-02w/i/G205302715/",
+        "title": "Leviton 15 amps Single Pole Toggle AC Quiet Switch White 1 pk 01451-02W | Zoro",
+        "source_type": "distributor",
+        "is_pdf": false,
+        "fetched_at": null
+      }
+    ],
+    "status": "needs-review",
+    "provider": "gemini",
+    "cost_usd": 0.0,
+    "duration_s": 0.0,
+    "created_at": "2026-08-09T18:27:47.280033+00:00"
+  },
+  {
+    "id": "52c86414b8f2",
+    "input": {
+      "mpn": "HOM230CP",
+      "brand": "Square D",
+      "description": "30A 2 pole breaker"
+    },
+    "category": "circuit_breaker",
+    "category_confidence": 0.95,
+    "seo_title": "Square D HOM230CP 30A 2-Pole 120/240V Circuit Breaker",
+    "short_description": "Square D Homeline standard circuit breaker, rated 30 A at 120/240 V AC, with 2-pole plug-in mounting and a 10 kA interrupt rating.",
+    "long_description": "Square D HOM230CP is a Homeline standard circuit breaker rated for 30 A and 120/240 V AC. This 2-pole breaker features plug-in mounting, a 10 kA interrupt rating, and a 2-inch width.\n\nWire capacity is 1 x AWG 14 to AWG 8 aluminum/copper or 2 x AWG 14 to AWG 10 copper. UL Listed and compliant with the EU RoHS Directive; REACh, EU RoHS, and China RoHS declarations are available. Lifetime warranty. Country of origin: Mexico.",
+    "attributes": [
+      {
+        "name": "amperage_rating",
+        "value": "30",
+        "unit": "A",
+        "confidence": 0.92,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "30",
+            "quote": "Current Rating 30 A"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "30",
+            "quote": "Current Rating 30 A"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "30",
+            "quote": "HOM230CP Mini circuit breaker, Homeline, 30A, 2 pole, 120/240 VAC, 10 kA AIR, standard type, plug in mount"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "30",
+            "quote": "Current Rating 30 A"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "number_of_poles",
+        "value": "2",
+        "unit": "pole",
+        "confidence": 0.92,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "2",
+            "quote": "Number of Poles 2P"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "2",
+            "quote": "Number of Poles 2P"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "2",
+            "quote": "Number of Poles 2P"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "2",
+            "quote": "Number of Poles 2P"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "voltage_rating",
+        "value": "120/240",
+        "unit": "V AC",
+        "confidence": 0.92,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "120/240",
+            "quote": "Voltage Rating 120/240 V AC"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "120/240",
+            "quote": "Voltage Rating 120/240 V AC"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "120/240",
+            "quote": "HOM230CP Mini circuit breaker, Homeline, 30A, 2 pole, 120/240 VAC, 10 kA AIR, standard type, plug in mount"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "120/240",
+            "quote": "Voltage Rating 120/240 V AC"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "breaker_type",
+        "value": "Standard",
+        "unit": "",
+        "confidence": 0.88,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "Standard",
+            "quote": "Circuit Breaker Type Standard"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "Standard",
+            "quote": "Circuit Breaker Type Standard"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "Standard",
+            "quote": "Circuit Breaker Type Standard"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "country_of_origin",
+        "value": "MX",
+        "unit": "",
+        "confidence": 0.88,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "MX",
+            "quote": "Country of origin MX"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "MX",
+            "quote": "Country of origin MX"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "MX",
+            "quote": "Country of origin MX"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "interrupt_rating_ka",
+        "value": "10",
+        "unit": "kA",
+        "confidence": 0.88,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "10",
+            "quote": "Short Circuit Current Rating 10 kA"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "10",
+            "quote": "Short Circuit Current Rating 10 kA"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "10",
+            "quote": "Short Circuit Current Rating 10 kA"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "mounting_type",
+        "value": "Plug-in",
+        "unit": "",
+        "confidence": 0.88,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "Plug-in",
+            "quote": "Mounting Type Plug-in"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "Plug-in",
+            "quote": "Mounting Type Plug-in"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "Plug-in",
+            "quote": "Mounting Type Plug-in"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "width_inches",
+        "value": "2",
+        "unit": "in",
+        "confidence": 0.88,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "2",
+            "quote": "Width 2 in (50.8 mm)"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "2",
+            "quote": "Maximum Width 2 in (50.80 mm)"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "2",
+            "quote": "Maximum Width 2 in (50.80 mm)"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "wire_size_range",
+        "value": "1 x AWG 14...AWG 8 ( aluminium/copper ); 2 x AWG 14...AWG 10 ( copper )",
+        "unit": "",
+        "confidence": 0.88,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "1 x AWG 14...AWG 8 ( aluminium/copper ); 2 x AWG 14...AWG 10 ( copper )",
+            "quote": "Wire Size 1 x AWG 14...AWG 8 ( aluminium/copper )\n2 x AWG 14...AWG 10 ( copper )"
+          },
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "AWG 14...AWG 8 (aluminium/copper); AWG 14...AWG 10 (copper)",
+            "quote": "Wire Size AWG 14...AWG 8 aluminium/copper)1 AWG 14...AWG 10 copper)2"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "AWG 14...AWG 8 aluminium/copper)1; AWG 14...AWG 10 copper)2",
+            "quote": "Wire Size AWG 14...AWG 8 aluminium/copper)1\nAWG 14...AWG 10 copper)2"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "frame_type",
+        "value": "Homeline",
+        "unit": "",
+        "confidence": 0.6,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "Homeline",
+            "quote": "Range Homeline"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "warranty",
+        "value": "Lifetime",
+        "unit": "",
+        "confidence": 0.6,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "Lifetime",
+            "quote": "Warranty Lifetime"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "upc_gtin",
+        "value": "00047569062773",
+        "unit": "",
+        "confidence": 1.0,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "00047569062773",
+            "quote": "GTIN 00047569062773"
+          },
+          {
+            "source_url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+            "source_type": "distributor",
+            "raw_value": "00047569062773",
+            "quote": "GTIN 00047569062773"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": true
+      },
+      {
+        "name": "weight_lbs",
+        "value": "0.65",
+        "unit": "lb(US)",
+        "confidence": 1.0,
+        "status": "verified",
+        "evidence": [
+          {
+            "source_url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+            "source_type": "distributor",
+            "raw_value": "0.65",
+            "quote": "Package weight(Lbs) 0.65 lb(US) (0.29 kg)"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": true
+      }
+    ],
+    "search_synonyms": [
+      "HOM230CP breaker",
+      "Square D 30 amp breaker",
+      "30A 2 pole breaker",
+      "Homeline 2 pole breaker",
+      "120/240V circuit breaker",
+      "10 kA breaker",
+      "plug-in circuit breaker",
+      "2 inch breaker"
+    ],
+    "certifications": [
+      "UL Listed",
+      "EU RoHS Directive Compliant",
+      "REACh Declaration",
+      "EU RoHS Declaration",
+      "China RoHS Declaration"
+    ],
+    "image_urls": [],
+    "datasheet_urls": [
+      "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+      "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+      "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf"
+    ],
+    "equivalent_mpns": [
+      "HOM230C",
+      "HOM230CP"
+    ],
+    "sources": [
+      {
+        "url": "https://www.se.com/us/en/product/HOM230CP/mini-circuit-breaker-homeline-30a-2-pole-120-240vac-10ka-air-standard-type-plug-in-ul/",
+        "title": "HOM230CP - Official Schneider Electric / Square D product page",
+        "source_type": "manufacturer",
+        "is_pdf": false,
+        "fetched_at": null
+      },
+      {
+        "url": "https://d2al98372ay9pv.cloudfront.net/userfiles/ad/documents/square_d_hom230_specification_sheet.pdf",
+        "title": "Square D HOM230 specification sheet (PDF)",
+        "source_type": "distributor",
+        "is_pdf": true,
+        "fetched_at": null
+      },
+      {
+        "url": "https://images.thdstatic.com/catalog/pdfImages/67/67407110-1724-4d06-a940-37d2129de9e2.pdf",
+        "title": "Homeline_HOM230CP.pdf (Home Depot PDF)",
+        "source_type": "distributor",
+        "is_pdf": true,
+        "fetched_at": null
+      },
+      {
+        "url": "https://assets.unilogcorp.com/267/ITEM/DOC/Square_D_HOM230CP_Specification_Sheet.pdf",
+        "title": "Square D HOM230CP Specification Sheet (Unilog PDF)",
+        "source_type": "distributor",
+        "is_pdf": true,
+        "fetched_at": null
+      },
+      {
+        "url": "https://www.homedepot.com/p/202353325",
+        "title": "Square D Homeline 30-Amp 2-Pole Circuit Breaker (HOM230CP) (Home Depot product page)",
+        "source_type": "distributor",
+        "is_pdf": false,
+        "fetched_at": null
+      }
+    ],
+    "status": "needs-review",
+    "provider": "openai",
+    "cost_usd": 0.0272,
+    "duration_s": 0.0,
+    "created_at": "2026-08-09T18:27:47.245301+00:00"
+  },
+  {
+    "id": "d3d108018e2e",
+    "input": {
+      "mpn": "QO120",
+      "brand": "Square D",
+      "description": "20 amp single pole QO breaker"
+    },
+    "category": "circuit_breaker",
+    "category_confidence": 1.0,
+    "seo_title": "Square D QO120 20A Single Pole Circuit Breaker - QO Series",
+    "short_description": "Square D QO120 circuit breaker, 20 A, 1 pole, thermal-magnetic trip, 10 kA interrupt rating, rated for 120/240 Vac, UL Listed.",
+    "long_description": "The Square D QO120 is a 20 amp single pole circuit breaker designed for reliable overcurrent protection in residential and light commercial electrical systems. It features a thermal-magnetic trip mechanism for precise response to overloads and short circuits, ensuring consistent performance under fault conditions. Rated for 120/240 Vac systems with a 10 kA interrupting capacity, the QO120 meets stringent safety standards for demanding applications. This breaker is UL Listed, confirming compliance with nationally recognized safety requirements for use in panelboards and load centers where Square D QO series breakers are specified.",
+    "attributes": [
+      {
+        "name": "amperage_rating",
+        "value": "20",
+        "unit": "A",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://download.se.com/files?p_Doc_Ref=1100CT0501",
+            "source_type": "manufacturer",
+            "raw_value": "20",
+            "quote": "Position 3 - Amperes QO 1 20 GFI"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "breaker_type",
+        "value": "QO",
+        "unit": "null",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://download.se.com/files?p_Doc_Ref=1100CT0501",
+            "source_type": "manufacturer",
+            "raw_value": "QO",
+            "quote": "Position 1 - Brand QO = Full size / QO Tandem Non-Class CTL"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "interrupt_rating_ka",
+        "value": "10",
+        "unit": "kA",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://download.se.com/files?p_Doc_Ref=1100CT0501",
+            "source_type": "manufacturer",
+            "raw_value": "10",
+            "quote": "Table 1 - Branch Circuit Breakers 10,000 AIR QO 1-pole, 10-70 A"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "number_of_poles",
+        "value": "1",
+        "unit": "pole",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://download.se.com/files?p_Doc_Ref=1100CT0501",
+            "source_type": "manufacturer",
+            "raw_value": "1",
+            "quote": "QO 1 20 GFI"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "trip_type",
+        "value": "Thermal-Magnetic",
+        "unit": "null",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://download.se.com/files?p_Doc_Ref=1100CT0501",
+            "source_type": "manufacturer",
+            "raw_value": "Thermal-Magnetic",
+            "quote": "Square D\u2122 QO\u2122 and Homeline\u2122 Load Centers and Enclosures Catalog 1100CT0501 06/2026 SQUARE D\u2122"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      },
+      {
+        "name": "voltage_rating",
+        "value": "120/240",
+        "unit": "Vac",
+        "confidence": 0.75,
+        "status": "single-source",
+        "evidence": [
+          {
+            "source_url": "https://download.se.com/files?p_Doc_Ref=1100CT0501",
+            "source_type": "manufacturer",
+            "raw_value": "120/240",
+            "quote": "Table 6 - Plug-on Neutral Load Center Main Lugs, Convertible Mains (1\u00d83W\u2013120/240 Vac Indoor\u2014UL Listed)"
+          }
+        ],
+        "conflicting_values": [],
+        "human_reviewed": false
+      }
+    ],
+    "search_synonyms": [
+      "QO120 breaker",
+      "Square D 20 amp breaker",
+      "single pole QO breaker",
+      "20A thermal magnetic breaker",
+      "120/240V circuit breaker",
+      "UL Listed QO breaker",
+      "Square D QO series 20A",
+      "1 pole 20 amp breaker",
+      "QO circuit protector",
+      "residential panel breaker 20A"
+    ],
+    "certifications": [
+      "UL Listed"
+    ],
+    "image_urls": [],
+    "datasheet_urls": [
+      "https://download.se.com/files?p_Doc_Ref=1100CT0501",
+      "https://download.schneider-electric.com/files?p_Doc_Ref=QO120CP",
+      "https://download.schneider-electric.com/files?p_Doc_Ref=QO120"
+    ],
+    "equivalent_mpns": [],
+    "sources": [
+      {
+        "url": "https://download.se.com/files?p_Doc_Ref=1100CT0501",
+        "title": "Square D QO and Homeline Load Centers and Enclosures Catalog | Schneider Electric (Direct PDF Link)",
+        "source_type": "manufacturer",
+        "is_pdf": true,
+        "fetched_at": "2026-08-09T18:19:04Z"
+      },
+      {
+        "url": "https://download.schneider-electric.com/files?p_Doc_Ref=QO120CP",
+        "title": "QO120CP (Direct PDF Link - Product Data Sheet)",
+        "source_type": "manufacturer",
+        "is_pdf": true,
+        "fetched_at": null
+      },
+      {
+        "url": "https://download.schneider-electric.com/files?p_Doc_Ref=QO120",
+        "title": "Product data sheet (Direct PDF Link)",
+        "source_type": "manufacturer",
+        "is_pdf": true,
+        "fetched_at": null
+      },
+      {
+        "url": "https://www.se.com/us/en/product/QO120/mini-circuit-breaker-qo-20a-1-pole-120-240vac-10ka-plug-in/",
+        "title": "QO120 - Mini circuit breaker, QO, 20A, 1 pole, 120/240VAC, 10kA, plug in - Schneider Electric",
+        "source_type": "manufacturer",
+        "is_pdf": false,
+        "fetched_at": null
+      },
+      {
+        "url": "https://www.se.com/us/en/product/QO120PDF/mini-circuit-breaker-qo-20a-1-pole-120vac-10ka-plug-in-dual-function-plug-on-neutral-taa/",
+        "title": "QO120PDF - Mini circuit breaker, QO, 20A, 1 pole, 120VAC, 10kA, plug in, dual function, plug on neutral [TAA] - Schneider Electric",
+        "source_type": "manufacturer",
+        "is_pdf": false,
+        "fetched_at": null
+      }
+    ],
+    "status": "needs-review",
+    "provider": "hybrid",
+    "cost_usd": 0.0,
+    "duration_s": 148.3,
+    "created_at": "2026-08-09T18:17:30.330751+00:00"
+  }
+]
