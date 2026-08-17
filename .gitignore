@@ -18,5 +18,5 @@ assets/screens/_tpl_bg.png
 # Handoff PDF (personal reference), the organiser-supplied template, and
 # PowerPoint's lock files — none of these are project source.
 SKUForge-Handoff.pdf
-[EXT]*.pptx
+\[EXT\]*.pptx
 ~$*.pptx
